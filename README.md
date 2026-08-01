@@ -15,13 +15,20 @@ go build -o sdk .
 ./sdk remote nodejs
 ```
 
-安装并选择默认版本后，执行下面的命令一次，将受管理工具置于当前 shell 的 `PATH` 前方：
+安装并选择默认版本后，执行下面的命令一次，将当前版本发布到 shell 环境变量：
 
 ```bash
 eval "$(./sdk env)"
 ```
 
-`sdk default` 会生成 `~/.sdk/shims` 下的命令转发器。因此后续执行 `java`、`mvn`、`go`、`node`、`npm` 等命令时，会自动使用 SDK 选定的默认版本。
+也可只配置一次，让新的 zsh 终端自动加载当前版本：
+
+```bash
+./sdk setup zsh
+source ~/.zshrc
+```
+
+`sdk default` 会更新每个工具目录中的 `current` 软链接，例如 `~/.sdk/tools/java/current`。Java 安装会被规整为版本目录就是 `JAVA_HOME`，因此 `~/.sdk/tools/java/25.0.4/bin/java` 可直接执行。`sdk env` 会输出 `JAVA_HOME`、`MAVEN_HOME`、`GOROOT`、`NODE_HOME` 和相应的 `PATH` 设置。
 
 状态默认保存在 `~/.sdk/state.json`。开发和测试时可用 `SDK_HOME` 隔离状态：
 
@@ -41,8 +48,10 @@ SDK_HOME=/tmp/sdk ./sdk list
 | `sdk default <tool> <version>` | 设置全局默认版本。`use` 是兼容别名。 |
 | `sdk current [tool]` | 不带参数时显示所有已下载工具的当前版本；指定工具时仅显示该工具。 |
 | `sdk uninstall <tool> <version>` | 解除非默认版本的管理登记。 |
-| `sdk env` | 输出将 SDK shims 加入当前 shell `PATH` 的命令。 |
+| `sdk env` | 输出当前版本对应的环境变量与 `PATH` 设置。 |
+
+下载完成后，`sdk install` 会询问是否将该版本设为默认版本；输入 `y` 或 `yes` 即可确认。
 
 ## 开发路线
 
-当前版本已经能够下载、解压并管理四种工具的官方发布包。下一阶段将补充 SHA-256 校验、shims、`sdk use` 的当前 shell 集成和项目级 `.sdk.json` 解析。
+当前版本已经能够下载、解压并管理四种工具的官方发布包。下一阶段将补充 SHA-256 校验、安装缓存、项目级 `.sdk.json` 解析与升级检查。

@@ -18,7 +18,8 @@ Usage:
   sdk default <tool> <version>         Set the global default version
   sdk use <tool> <version>             Compatibility alias for default
   sdk uninstall <tool> <version>       Remove a non-default registration
-  sdk env                              Print shell setup for managed commands
+  sdk env                              Print environment variables for current versions
+  sdk setup zsh                        Add sdk initialization to ~/.zshrc
   sdk version                          Print the sdk version
 
 Supported tools: java, nodejs, maven, go

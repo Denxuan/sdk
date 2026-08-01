@@ -32,8 +32,8 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		return nil
 	case "env":
 		return printEnvironment(stateStore, out)
-	case "exec":
-		return execute(stateStore, args[1:])
+	case "setup":
+		return setupShell(args[1:], out)
 	case "list":
 		return list(stateStore, args[1:], out)
 	case "current":

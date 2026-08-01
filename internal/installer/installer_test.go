@@ -3,6 +3,7 @@ package installer
 import (
 	"archive/tar"
 	"compress/gzip"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,5 +57,19 @@ func TestExtractTarGzipAndFindRoot(t *testing.T) {
 func TestSafePathRejectsTraversal(t *testing.T) {
 	if _, err := safePath(t.TempDir(), "../../outside"); err == nil {
 		t.Fatal("unsafe path was accepted")
+	}
+}
+
+func TestProgressWriterReportsDownloadSize(t *testing.T) {
+	var reports []Progress
+	writer := &progressWriter{writer: io.Discard, total: 5, report: func(progress Progress) { reports = append(reports, progress) }}
+	if _, err := writer.Write([]byte("hello")); err != nil {
+		t.Fatal(err)
+	}
+	if len(reports) != 1 {
+		t.Fatalf("report count = %d", len(reports))
+	}
+	if reports[0] != (Progress{Downloaded: 5, Total: 5}) {
+		t.Fatalf("progress = %+v", reports[0])
 	}
 }

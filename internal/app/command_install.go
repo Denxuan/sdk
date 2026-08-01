@@ -1,12 +1,14 @@
 package app
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Denxuan/sdk/internal/catalog"
@@ -50,11 +52,19 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 			return err
 		}
 		installPath = filepath.Join(stateStore.ToolsDir(), string(tool), version)
-		fmt.Fprintf(out, "downloading %s %s...\n", tool, version)
-		if err := installer.New().Install(ctx, artifact.URL, installPath); err != nil {
+		progress := newDownloadProgress(out, tool, version)
+		err = installer.New().WithProgress(progress.Update).Install(ctx, artifact.URL, installPath)
+		progress.Finish()
+		if err != nil {
 			return err
 		}
 		managed = true
+		if tool == model.Java {
+			if err := installer.NormalizeJavaHome(installPath); err != nil {
+				_ = os.RemoveAll(installPath)
+				return err
+			}
+		}
 	} else if !isDirectory(installPath) {
 		return fmt.Errorf("installation path must be a directory: %s", installPath)
 	}
@@ -67,7 +77,33 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		return err
 	}
 	fmt.Fprintf(out, "installed %s %s at %s\n", tool, version, installPath)
+	if managed {
+		setAsDefault, err := askToSetDefault(out, os.Stdin, tool, version)
+		if err != nil {
+			return err
+		}
+		if setAsDefault {
+			return setDefault(stateStore, []string{string(tool), version}, out)
+		}
+	}
 	return nil
+}
+
+func askToSetDefault(out io.Writer, in io.Reader, tool model.Tool, version string) (bool, error) {
+	fmt.Fprintf(out, "Set %s %s as default? [y/N]: ", tool, version)
+	answer, err := bufio.NewReader(in).ReadString('\n')
+	if err != nil && len(answer) == 0 {
+		if errors.Is(err, io.EOF) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isAffirmative(answer), nil
+}
+
+func isAffirmative(answer string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(answer))
+	return normalized == "y" || normalized == "yes"
 }
 
 func parseInstallArgs(args []string) (tool, version, path string, err error) {

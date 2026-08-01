@@ -16,6 +16,38 @@ func New(home string) *Store { return &Store{Home: home} }
 
 func (s *Store) ToolsDir() string  { return filepath.Join(s.Home, "tools") }
 func (s *Store) StatePath() string { return filepath.Join(s.Home, "state.json") }
+func (s *Store) CurrentPath(tool model.Tool) string {
+	return filepath.Join(s.ToolsDir(), string(tool), "current")
+}
+
+// SetCurrent updates the managed current symlink without ever removing a real
+// directory that was not created as a symlink by sdk.
+func (s *Store) SetCurrent(tool model.Tool, target string) error {
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return fmt.Errorf("resolve current target: %w", err)
+	}
+	current := s.CurrentPath(tool)
+	if err := os.MkdirAll(filepath.Dir(current), 0755); err != nil {
+		return fmt.Errorf("create current directory: %w", err)
+	}
+	if info, err := os.Lstat(current); err == nil && info.Mode()&os.ModeSymlink == 0 {
+		return fmt.Errorf("refusing to replace non-symlink path %s", current)
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("inspect current link: %w", err)
+	}
+	temporary := current + ".next"
+	if err := os.Remove(temporary); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove temporary current link: %w", err)
+	}
+	if err := os.Symlink(absTarget, temporary); err != nil {
+		return fmt.Errorf("create current link: %w", err)
+	}
+	if err := os.Rename(temporary, current); err != nil {
+		return fmt.Errorf("replace current link: %w", err)
+	}
+	return nil
+}
 
 func emptyState() model.State {
 	return model.State{Defaults: make(map[model.Tool]string), Installed: make(map[model.Tool][]model.InstalledVersion)}

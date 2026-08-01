@@ -14,9 +14,24 @@ import (
 	"time"
 )
 
-type Installer struct{ HTTP *http.Client }
+type Progress struct {
+	Downloaded int64
+	Total      int64
+}
+
+type ProgressReporter func(Progress)
+
+type Installer struct {
+	HTTP     *http.Client
+	Progress ProgressReporter
+}
 
 func New() *Installer { return &Installer{HTTP: &http.Client{Timeout: 5 * time.Minute}} }
+
+func (i *Installer) WithProgress(reporter ProgressReporter) *Installer {
+	i.Progress = reporter
+	return i
+}
 
 // Install downloads an archive, extracts it into destination, and returns the
 // final directory. The archive's single top-level folder is removed.
@@ -67,12 +82,41 @@ func (i *Installer) download(ctx context.Context, url, target string) error {
 	if err != nil {
 		return err
 	}
-	_, copyErr := io.Copy(file, io.LimitReader(resp.Body, 2<<30))
+	writer := &progressWriter{writer: file, total: resp.ContentLength, report: i.Progress}
+	_, copyErr := io.Copy(writer, io.LimitReader(resp.Body, 2<<30))
 	closeErr := file.Close()
 	if copyErr != nil {
 		return copyErr
 	}
 	return closeErr
+}
+
+type progressWriter struct {
+	writer     io.Writer
+	total      int64
+	downloaded int64
+	report     ProgressReporter
+	lastReport time.Time
+}
+
+func (w *progressWriter) Write(data []byte) (int, error) {
+	written, err := w.writer.Write(data)
+	w.downloaded += int64(written)
+	w.reportProgress()
+	return written, err
+}
+
+func (w *progressWriter) reportProgress() {
+	if w.report == nil {
+		return
+	}
+	now := time.Now()
+	finished := w.total > 0 && w.downloaded >= w.total
+	if !w.lastReport.IsZero() && !finished && now.Sub(w.lastReport) < 100*time.Millisecond {
+		return
+	}
+	w.lastReport = now
+	w.report(Progress{Downloaded: w.downloaded, Total: w.total})
 }
 
 func extract(archive, destination string) error {

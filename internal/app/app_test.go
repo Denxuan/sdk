@@ -30,6 +30,15 @@ func TestInstallUseListAndRemove(t *testing.T) {
 	if _, err := run("use", "go", "1.26.4"); err != nil {
 		t.Fatal(err)
 	}
+	currentLink := filepath.Join(home, "tools", "go", "current")
+	target, err := os.Readlink(currentLink)
+	if err != nil || target != installPath {
+		t.Fatalf("current link = %q, %v", target, err)
+	}
+	environment, err := run("env")
+	if err != nil || !strings.Contains(environment, "GOROOT=\""+currentLink+"\"") {
+		t.Fatalf("environment = %q, %v", environment, err)
+	}
 	got, err := run("current", "go")
 	if err != nil || strings.TrimSpace(got) != "1.26.4" {
 		t.Fatalf("current = %q, %v", got, err)
@@ -79,5 +88,30 @@ func TestRecommendedVersionPrefersLTS(t *testing.T) {
 	versions := []catalog.Version{{Number: "26.0.2"}, {Number: "25.0.4", LTS: true}, {Number: "21.0.12", LTS: true}}
 	if got := preferredVersion(versions); got != "25.0.4" {
 		t.Fatalf("preferred version = %q", got)
+	}
+}
+
+func TestIsAffirmative(t *testing.T) {
+	for _, answer := range []string{"y", "Y", "yes", " YES "} {
+		if !isAffirmative(answer) {
+			t.Errorf("%q was not accepted", answer)
+		}
+	}
+	for _, answer := range []string{"", "n", "no", "anything else"} {
+		if isAffirmative(answer) {
+			t.Errorf("%q was accepted", answer)
+		}
+	}
+}
+
+func TestReplaceInitializationBlockIsIdempotent(t *testing.T) {
+	block := zshInitialization("/opt/sdk")
+	first := replaceInitializationBlock("export EDITOR=vim\n", block)
+	second := replaceInitializationBlock(first, block)
+	if first != second {
+		t.Fatalf("initialization block changed on second write:\n%s", second)
+	}
+	if strings.Count(second, setupStart) != 1 {
+		t.Fatalf("setup start count = %d", strings.Count(second, setupStart))
 	}
 }

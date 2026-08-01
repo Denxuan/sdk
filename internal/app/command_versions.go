@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Denxuan/sdk/internal/installer"
 	"github.com/Denxuan/sdk/internal/model"
-	"github.com/Denxuan/sdk/internal/shim"
 	"github.com/Denxuan/sdk/internal/store"
 )
 
@@ -113,12 +113,17 @@ func setDefault(stateStore *store.Store, args []string, out io.Writer) error {
 	if err := stateStore.Save(state); err != nil {
 		return err
 	}
-	if binary, err := os.Executable(); err == nil {
-		if err := shim.Ensure(stateStore.Home, binary); err != nil {
-			return fmt.Errorf("create command shims: %w", err)
+	installation, _ := findInstallation(state.Installed[tool], args[1])
+	if tool == model.Java && installation.Managed {
+		if err := installer.NormalizeJavaHome(installation.Path); err != nil {
+			return fmt.Errorf("normalize Java installation: %w", err)
 		}
 	}
+	if err := stateStore.SetCurrent(tool, installation.Path); err != nil {
+		return fmt.Errorf("update current %s link: %w", tool, err)
+	}
 	fmt.Fprintf(out, "default %s set to %s\n", tool, args[1])
+	fmt.Fprintln(out, "Run `source ~/.zshrc` to apply the new version in this terminal.")
 	return nil
 }
 
@@ -185,4 +190,13 @@ func hasVersion(installed []model.InstalledVersion, version string) bool {
 		}
 	}
 	return false
+}
+
+func findInstallation(installed []model.InstalledVersion, version string) (model.InstalledVersion, bool) {
+	for _, item := range installed {
+		if item.Version == version {
+			return item, true
+		}
+	}
+	return model.InstalledVersion{}, false
 }
