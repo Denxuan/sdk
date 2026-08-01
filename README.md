@@ -44,6 +44,7 @@ SDK_HOME=/tmp/sdk ./sdk list
 | --- | --- |
 | `sdk remote <tool>` / `sdk available <tool>` | 显示官方远程版本，并标记本机状态。 |
 | `sdk install <tool> [version]` | 下载并安装官方发布包。不传版本时优先最新 LTS，否则使用最新正式版；可加 `--path <dir>` 登记本机已有安装。 |
+| `sdk update [tool]` | 不带参数时更新所有已管理工具；指定工具时仅更新该工具。 |
 | `sdk list [tool]` | 显示 SDK 已管理的本机版本。 |
 | `sdk default <tool> <version>` | 设置全局默认版本。`use` 是兼容别名。 |
 | `sdk current [tool]` | 不带参数时显示所有已下载工具的当前版本；指定工具时仅显示该工具。 |
@@ -51,6 +52,8 @@ SDK_HOME=/tmp/sdk ./sdk list
 | `sdk env` | 输出当前版本对应的环境变量与 `PATH` 设置。 |
 
 下载完成后，`sdk install` 会询问是否将该版本设为默认版本；输入 `y` 或 `yes` 即可确认。
+
+`sdk update` 成功安装新版本后，会询问是否删除旧的 SDK 管理版本。手工通过 `--path` 登记的目录不会被删除，当前默认版本也会被保留。
 
 ## 开发路线
 

@@ -13,6 +13,7 @@ Usage:
   sdk available <tool>                 Alias of remote
   sdk install <tool> [version] [--path <directory>]
                                            Install a selected or recommended release
+  sdk update [tool]                       Update managed tools, or one selected tool
   sdk list [tool]                      List registered versions
   sdk current [tool]                   Print current versions, optionally for one tool
   sdk default <tool> <version>         Set the global default version

@@ -5,11 +5,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/Denxuan/sdk/internal/catalog"
 	"github.com/Denxuan/sdk/internal/model"
+	"github.com/Denxuan/sdk/internal/store"
 )
 
 func TestInstallUseListAndRemove(t *testing.T) {
@@ -113,5 +115,39 @@ func TestReplaceInitializationBlockIsIdempotent(t *testing.T) {
 	}
 	if strings.Count(second, setupStart) != 1 {
 		t.Fatalf("setup start count = %d", strings.Count(second, setupStart))
+	}
+}
+
+func TestUpdateTargetsContainsManagedToolsOnly(t *testing.T) {
+	home := t.TempDir()
+	stateStore := store.New(home)
+	state := model.State{
+		Defaults: map[model.Tool]string{},
+		Installed: map[model.Tool][]model.InstalledVersion{
+			model.Java: {{Version: "21.0.12"}},
+			model.Go:   {{Version: "1.26.5"}},
+		},
+	}
+	if err := stateStore.Save(state); err != nil {
+		t.Fatal(err)
+	}
+	targets, err := updateTargets(stateStore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(targets, []model.Tool{model.Java, model.Go}) {
+		t.Fatalf("targets = %v", targets)
+	}
+}
+
+func TestOldManagedVersionsExcludesDefaultAndExternalInstalls(t *testing.T) {
+	installed := []model.InstalledVersion{
+		{Version: "21.0.12", Managed: true},
+		{Version: "17.0.20", Managed: true},
+		{Version: "11.0.32", Managed: false},
+	}
+	candidates := oldManagedVersions(installed, "25.0.4", "21.0.12")
+	if !reflect.DeepEqual(candidates, []model.InstalledVersion{{Version: "17.0.20", Managed: true}}) {
+		t.Fatalf("cleanup candidates = %v", candidates)
 	}
 }

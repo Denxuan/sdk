@@ -44,6 +44,8 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		return uninstall(stateStore, args[1:], out)
 	case "install":
 		return install(ctx, stateStore, args[1:], out)
+	case "update":
+		return update(ctx, stateStore, args[1:], out)
 	case "remote", "available":
 		return remote(ctx, stateStore, args[1:], out)
 	default:
