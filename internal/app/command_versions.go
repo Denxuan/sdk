@@ -54,14 +54,18 @@ func printInstalledVersions(out io.Writer, tool model.Tool, installed []model.In
 }
 
 func current(stateStore *store.Store, args []string, out io.Writer) error {
-	if len(args) != 1 {
-		return errors.New("usage: sdk current <tool>")
+	if len(args) > 1 {
+		return errors.New("usage: sdk current [tool]")
 	}
-	tool, err := parseTool(args[0])
+	state, err := stateStore.Load()
 	if err != nil {
 		return err
 	}
-	state, err := stateStore.Load()
+	if len(args) == 0 {
+		printCurrentVersions(out, state)
+		return nil
+	}
+	tool, err := parseTool(args[0])
 	if err != nil {
 		return err
 	}
@@ -70,6 +74,24 @@ func current(stateStore *store.Store, args []string, out io.Writer) error {
 		return nil
 	}
 	return fmt.Errorf("no default %s version is set", tool)
+}
+
+func printCurrentVersions(out io.Writer, state model.State) {
+	found := false
+	for _, tool := range model.Tools() {
+		if len(state.Installed[tool]) == 0 {
+			continue
+		}
+		version := state.Defaults[tool]
+		if version == "" {
+			version = "not set"
+		}
+		fmt.Fprintf(out, "%s: %s\n", tool, version)
+		found = true
+	}
+	if !found {
+		fmt.Fprintln(out, "no tools are installed")
+	}
 }
 
 func setDefault(stateStore *store.Store, args []string, out io.Writer) error {

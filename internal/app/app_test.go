@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Denxuan/sdk/internal/catalog"
 	"github.com/Denxuan/sdk/internal/model"
 )
 
@@ -33,6 +34,10 @@ func TestInstallUseListAndRemove(t *testing.T) {
 	if err != nil || strings.TrimSpace(got) != "1.26.4" {
 		t.Fatalf("current = %q, %v", got, err)
 	}
+	got, err = run("current")
+	if err != nil || strings.TrimSpace(got) != "go: 1.26.4" {
+		t.Fatalf("all current = %q, %v", got, err)
+	}
 	got, err = run("list", "go")
 	if err != nil || !strings.Contains(got, "* 1.26.4") {
 		t.Fatalf("list = %q, %v", got, err)
@@ -50,11 +55,29 @@ func TestFormatRemoteVersionsMarksInstalledAndDefault(t *testing.T) {
 			model.Maven: {{Version: "3.9.16"}, {Version: "3.9.15"}},
 		},
 	}
-	formatRemoteVersions(&out, model.Maven, []string{"3.9.16", "3.9.15", "3.9.14"}, state)
+	formatRemoteVersions(&out, model.Maven, []catalog.Version{{Number: "3.9.16"}, {Number: "3.9.15"}, {Number: "3.9.14"}}, state)
 	got := out.String()
 	for _, expected := range []string{"Available Maven Versions", "> * 3.9.16", "  * 3.9.15", "* - installed", "> - currently in use"} {
 		if !strings.Contains(got, expected) {
 			t.Errorf("output does not contain %q:\n%s", expected, got)
 		}
+	}
+}
+
+func TestRemoteVersionLabelAddsLTSWithoutChangingVersionLookup(t *testing.T) {
+	state := model.State{
+		Defaults:  map[model.Tool]string{model.Java: "21.0.12"},
+		Installed: map[model.Tool][]model.InstalledVersion{model.Java: {{Version: "21.0.12"}}},
+	}
+	got := remoteVersionLabel(model.Java, catalog.Version{Number: "21.0.12", LTS: true}, state)
+	if got != "> * 21.0.12 LTS" {
+		t.Fatalf("label = %q", got)
+	}
+}
+
+func TestRecommendedVersionPrefersLTS(t *testing.T) {
+	versions := []catalog.Version{{Number: "26.0.2"}, {Number: "25.0.4", LTS: true}, {Number: "21.0.12", LTS: true}}
+	if got := preferredVersion(versions); got != "25.0.4" {
+		t.Fatalf("preferred version = %q", got)
 	}
 }

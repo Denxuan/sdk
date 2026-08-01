@@ -9,7 +9,7 @@ import (
 
 const goReleasesURL = "https://go.dev/dl/?mode=json&include=all"
 
-func (c *Client) goVersions(ctx context.Context) ([]string, error) {
+func (c *Client) goVersions(ctx context.Context) ([]Version, error) {
 	var response []struct {
 		Version string `json:"version"`
 	}
@@ -20,7 +20,7 @@ func (c *Client) goVersions(ctx context.Context) ([]string, error) {
 	for _, release := range response {
 		versions = append(versions, strings.TrimPrefix(release.Version, "go"))
 	}
-	return unique(versions), nil
+	return stableVersions(versions), nil
 }
 
 func goArtifact(version string) (Artifact, error) {

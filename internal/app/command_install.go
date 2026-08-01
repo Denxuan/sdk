@@ -24,6 +24,16 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 	if err != nil {
 		return err
 	}
+	if version == "" {
+		if existingPath != "" {
+			return errors.New("usage: sdk install <tool> <version> --path <directory>")
+		}
+		version, err = recommendedVersion(ctx, tool)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "selected %s %s\n", tool, version)
+	}
 	state, err := stateStore.Load()
 	if err != nil {
 		return err
@@ -73,10 +83,36 @@ func parseInstallArgs(args []string) (tool, version, path string, err error) {
 		index++
 		path = args[index]
 	}
-	if len(positionals) != 2 {
-		return "", "", "", errors.New("usage: sdk install <tool> <version> [--path <directory>]")
+	if len(positionals) < 1 || len(positionals) > 2 {
+		return "", "", "", errors.New("usage: sdk install <tool> [version] [--path <directory>]")
 	}
-	return positionals[0], positionals[1], path, nil
+	if len(positionals) == 2 {
+		version = positionals[1]
+	}
+	return positionals[0], version, path, nil
+}
+
+func recommendedVersion(ctx context.Context, tool model.Tool) (string, error) {
+	versions, err := catalog.New().Versions(ctx, tool)
+	if err != nil {
+		return "", err
+	}
+	if version := preferredVersion(versions); version != "" {
+		return version, nil
+	}
+	return "", fmt.Errorf("no stable %s versions are available", tool)
+}
+
+func preferredVersion(versions []catalog.Version) string {
+	for _, version := range versions {
+		if version.LTS {
+			return version.Number
+		}
+	}
+	if len(versions) > 0 {
+		return versions[0].Number
+	}
+	return ""
 }
 
 func isDirectory(path string) bool { info, err := os.Stat(path); return err == nil && info.IsDir() }

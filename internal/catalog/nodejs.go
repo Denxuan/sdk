@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"strings"
@@ -9,18 +10,23 @@ import (
 
 const nodeReleasesURL = "https://nodejs.org/dist/index.json"
 
-func (c *Client) nodeVersions(ctx context.Context) ([]string, error) {
+func (c *Client) nodeVersions(ctx context.Context) ([]Version, error) {
 	var response []struct {
-		Version string `json:"version"`
+		Version string          `json:"version"`
+		LTS     json.RawMessage `json:"lts"`
 	}
 	if err := c.getJSON(ctx, nodeReleasesURL, &response); err != nil {
 		return nil, err
 	}
-	versions := make([]string, 0, len(response))
+	versions := make([]Version, 0, len(response))
 	for _, release := range response {
-		versions = append(versions, strings.TrimPrefix(release.Version, "v"))
+		versions = append(versions, Version{Number: strings.TrimPrefix(release.Version, "v"), LTS: nodeLTS(release.LTS)})
 	}
-	return unique(versions), nil
+	return stableReleases(versions), nil
+}
+
+func nodeLTS(value json.RawMessage) bool {
+	return len(value) > 0 && string(value) != "false" && string(value) != "null" && string(value) != `""`
 }
 
 func nodeArtifact(version string) (Artifact, error) {

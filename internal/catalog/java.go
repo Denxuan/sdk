@@ -2,37 +2,95 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
 	"runtime"
 	"strings"
 )
 
 const adoptiumReleasesURL = "https://api.adoptium.net/v3/info/available_releases"
 
-func (c *Client) javaVersions(ctx context.Context) ([]string, error) {
+func (c *Client) javaVersions(ctx context.Context) ([]Version, error) {
 	var response struct {
 		AvailableReleases []int `json:"available_releases"`
+		AvailableLTS      []int `json:"available_lts_releases"`
 	}
 	if err := c.getJSON(ctx, adoptiumReleasesURL, &response); err != nil {
 		return nil, err
 	}
-	versions := make([]string, 0, len(response.AvailableReleases))
-	for _, release := range response.AvailableReleases {
-		versions = append(versions, fmt.Sprint(release))
+	ltsFeatures := make(map[int]bool, len(response.AvailableLTS))
+	for _, featureVersion := range response.AvailableLTS {
+		ltsFeatures[featureVersion] = true
 	}
-	return unique(versions), nil
+	versions := make([]Version, 0, len(response.AvailableReleases))
+	for _, release := range response.AvailableReleases {
+		version, err := c.javaLatestVersion(ctx, release)
+		if err != nil {
+			return nil, err
+		}
+		if version == "" {
+			continue
+		}
+		versions = append(versions, Version{Number: version, LTS: ltsFeatures[release]})
+	}
+	return stableReleases(versions), nil
+}
+
+func (c *Client) javaLatestVersion(ctx context.Context, featureVersion int) (string, error) {
+	osName, architecture, err := javaPlatform()
+	if err != nil {
+		return "", err
+	}
+	var response []struct {
+		VersionData struct {
+			Semver string `json:"semver"`
+		} `json:"version_data"`
+	}
+	if err := c.getJSON(ctx, javaAssetsURL(featureVersion, osName, architecture), &response); err != nil {
+		var statusError *StatusError
+		if errors.As(err, &statusError) && statusError.StatusCode == 404 {
+			return "", nil
+		}
+		return "", err
+	}
+	if len(response) == 0 || response[0].VersionData.Semver == "" {
+		return "", fmt.Errorf("no Java %d release is available for %s/%s", featureVersion, osName, architecture)
+	}
+	return strings.SplitN(response[0].VersionData.Semver, "+", 2)[0], nil
+}
+
+func javaAssetsURL(featureVersion int, osName, architecture string) string {
+	query := url.Values{
+		"architecture": {architecture},
+		"image_type":   {"jdk"},
+		"jvm_impl":     {"hotspot"},
+		"os":           {osName},
+		"page_size":    {"1"},
+		"sort_order":   {"DESC"},
+		"vendor":       {"eclipse"},
+	}
+	return fmt.Sprintf("https://api.adoptium.net/v3/assets/feature_releases/%d/ga?%s", featureVersion, query.Encode())
 }
 
 func javaArtifact(version string) (Artifact, error) {
+	osName, architecture, err := javaPlatform()
+	if err != nil {
+		return Artifact{}, err
+	}
+	featureVersion := strings.SplitN(version, ".", 2)[0]
+	url := fmt.Sprintf("https://api.adoptium.net/v3/binary/latest/%s/ga/%s/%s/jdk/hotspot/normal/eclipse", featureVersion, osName, architecture)
+	return Artifact{URL: url}, nil
+}
+
+func javaPlatform() (string, string, error) {
 	osName, supported := map[string]string{"darwin": "mac", "linux": "linux", "windows": "windows"}[runtime.GOOS]
 	if !supported {
-		return Artifact{}, fmt.Errorf("java is not supported on %s", runtime.GOOS)
+		return "", "", fmt.Errorf("java is not supported on %s", runtime.GOOS)
 	}
 	architecture := runtime.GOARCH
 	if architecture == "arm64" {
 		architecture = "aarch64"
 	}
-	featureVersion := strings.SplitN(version, ".", 2)[0]
-	url := fmt.Sprintf("https://api.adoptium.net/v3/binary/latest/%s/ga/%s/%s/jdk/hotspot/normal/eclipse", featureVersion, osName, architecture)
-	return Artifact{URL: url}, nil
+	return osName, architecture, nil
 }

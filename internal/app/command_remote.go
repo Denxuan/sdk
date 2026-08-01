@@ -34,7 +34,7 @@ func remote(ctx context.Context, stateStore *store.Store, args []string, out io.
 	return nil
 }
 
-func formatRemoteVersions(out io.Writer, tool model.Tool, versions []string, state model.State) {
+func formatRemoteVersions(out io.Writer, tool model.Tool, versions []catalog.Version, state model.State) {
 	printRemoteHeader(out, tool)
 	for index, version := range versions {
 		fmt.Fprintf(out, "%-*s", remoteColumnWidth, remoteVersionLabel(tool, version, state))
@@ -54,14 +54,18 @@ func printRemoteHeader(out io.Writer, tool model.Tool) {
 	fmt.Fprintln(out, strings.Repeat("=", 80))
 }
 
-func remoteVersionLabel(tool model.Tool, version string, state model.State) string {
-	if state.Defaults[tool] == version {
-		return "> * " + version
+func remoteVersionLabel(tool model.Tool, version catalog.Version, state model.State) string {
+	label := version.Number
+	if version.LTS {
+		label += " LTS"
 	}
-	if hasVersion(state.Installed[tool], version) {
-		return "  * " + version
+	if state.Defaults[tool] == version.Number {
+		return "> * " + label
 	}
-	return "    " + version
+	if hasVersion(state.Installed[tool], version.Number) {
+		return "  * " + label
+	}
+	return "    " + label
 }
 
 func toolDisplayName(tool model.Tool) string {

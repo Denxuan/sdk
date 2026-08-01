@@ -7,7 +7,7 @@ import (
 
 const mavenMetadataURL = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml"
 
-func (c *Client) mavenVersions(ctx context.Context) ([]string, error) {
+func (c *Client) mavenVersions(ctx context.Context) ([]Version, error) {
 	var response struct {
 		Versioning struct {
 			Versions []string `xml:"versions>version"`
@@ -16,7 +16,7 @@ func (c *Client) mavenVersions(ctx context.Context) ([]string, error) {
 	if err := c.getXML(ctx, mavenMetadataURL, &response); err != nil {
 		return nil, err
 	}
-	return unique(response.Versioning.Versions), nil
+	return stableVersions(response.Versioning.Versions), nil
 }
 
 func mavenArtifact(version string) (Artifact, error) {

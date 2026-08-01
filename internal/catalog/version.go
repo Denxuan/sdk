@@ -9,6 +9,9 @@ import (
 func unique(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
+		if !isStableVersion(value) {
+			continue
+		}
 		seen[value] = struct{}{}
 	}
 	versions := make([]string, 0, len(seen))
@@ -17,6 +20,54 @@ func unique(values []string) []string {
 	}
 	sort.Slice(versions, func(i, j int) bool { return versionCompare(versions[i], versions[j]) > 0 })
 	return versions
+}
+
+func stableReleases(values []Version) []Version {
+	byNumber := make(map[string]Version, len(values))
+	for _, version := range values {
+		if !isStableVersion(version.Number) {
+			continue
+		}
+		_, found := byNumber[version.Number]
+		if !found || version.LTS {
+			byNumber[version.Number] = version
+		}
+	}
+	releases := make([]Version, 0, len(byNumber))
+	for _, release := range byNumber {
+		releases = append(releases, release)
+	}
+	sort.Slice(releases, func(i, j int) bool {
+		return versionCompare(releases[i].Number, releases[j].Number) > 0
+	})
+	return releases
+}
+
+func stableVersions(values []string) []Version {
+	releases := make([]Version, 0, len(values))
+	for _, value := range values {
+		releases = append(releases, Version{Number: value})
+	}
+	return stableReleases(releases)
+}
+
+// isStableVersion excludes labels commonly used by the four upstream
+// catalogues for preview, milestone and release-candidate builds.
+func isStableVersion(version string) bool {
+	lowercase := strings.ToLower(version)
+	for _, marker := range []string{"alpha", "beta", "rc", "snapshot", "preview", "nightly", "canary", "-ea"} {
+		if strings.Contains(lowercase, marker) {
+			return false
+		}
+	}
+	for _, part := range versionParts(version) {
+		if len(part) >= 2 && (part[0] == 'M' || part[0] == 'm') {
+			if _, err := strconv.Atoi(part[1:]); err == nil {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func versionCompare(left, right string) int {

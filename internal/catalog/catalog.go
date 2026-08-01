@@ -17,11 +17,16 @@ type Artifact struct {
 	URL string
 }
 
+type Version struct {
+	Number string
+	LTS    bool
+}
+
 func New() *Client {
 	return &Client{HTTP: &http.Client{Timeout: 15 * time.Second}}
 }
 
-func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]string, error) {
+func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]Version, error) {
 	switch tool {
 	case model.Java:
 		return c.javaVersions(ctx)

@@ -11,10 +11,10 @@ func usage(out io.Writer) {
 Usage:
   sdk remote <tool>                    List official remote versions
   sdk available <tool>                 Alias of remote
-  sdk install <tool> <version> [--path <directory>]
-                                           Download a release, or register an existing directory
+  sdk install <tool> [version] [--path <directory>]
+                                           Install a selected or recommended release
   sdk list [tool]                      List registered versions
-  sdk current <tool>                   Print the default version
+  sdk current [tool]                   Print current versions, optionally for one tool
   sdk default <tool> <version>         Set the global default version
   sdk use <tool> <version>             Compatibility alias for default
   sdk uninstall <tool> <version>       Remove a non-default registration

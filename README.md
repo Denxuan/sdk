@@ -7,6 +7,7 @@
 ```bash
 go build -o sdk .
 ./sdk install go 1.26.4
+./sdk install java       # 安装最新 LTS Java
 ./sdk default go 1.26.4
 ./sdk list go
 ./sdk current go
@@ -35,10 +36,10 @@ SDK_HOME=/tmp/sdk ./sdk list
 | 命令 | 作用 |
 | --- | --- |
 | `sdk remote <tool>` / `sdk available <tool>` | 显示官方远程版本，并标记本机状态。 |
-| `sdk install <tool> <version>` | 下载并安装官方发布包。可加 `--path <dir>` 登记本机已有安装。 |
+| `sdk install <tool> [version]` | 下载并安装官方发布包。不传版本时优先最新 LTS，否则使用最新正式版；可加 `--path <dir>` 登记本机已有安装。 |
 | `sdk list [tool]` | 显示 SDK 已管理的本机版本。 |
 | `sdk default <tool> <version>` | 设置全局默认版本。`use` 是兼容别名。 |
-| `sdk current <tool>` | 显示当前全局默认版本。 |
+| `sdk current [tool]` | 不带参数时显示所有已下载工具的当前版本；指定工具时仅显示该工具。 |
 | `sdk uninstall <tool> <version>` | 解除非默认版本的管理登记。 |
 | `sdk env` | 输出将 SDK shims 加入当前 shell `PATH` 的命令。 |
 
