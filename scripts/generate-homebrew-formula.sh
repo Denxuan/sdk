@@ -11,18 +11,18 @@ if [[ -z "$TAG" ]]; then
   exit 1
 fi
 
-TAG="v${TAG#v}"
-VERSION="${TAG#v}"
+RELEASE_TAG="$TAG"
+VERSION="${RELEASE_TAG#v}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIST_DIR="$ROOT_DIR/dist/$TAG"
+DIST_DIR="$ROOT_DIR/dist/v$VERSION"
 CHECKSUMS_FILE="$DIST_DIR/checksums.txt"
 OUTPUT_FILE="${2:-$DIST_DIR/sdk.rb}"
 REPOSITORY="${GITHUB_REPOSITORY:-Denxuan/sdk}"
-RELEASE_URL="https://github.com/$REPOSITORY/releases/download/$TAG"
+RELEASE_URL="https://github.com/$REPOSITORY/releases/download/$RELEASE_TAG"
 
 if [[ ! -f "$CHECKSUMS_FILE" ]]; then
   echo "Checksums file not found: $CHECKSUMS_FILE" >&2
-  echo "Run ./scripts/package-release.sh $TAG first." >&2
+  echo "Run ./scripts/package-release.sh $RELEASE_TAG first." >&2
   exit 1
 fi
 

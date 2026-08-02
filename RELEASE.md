@@ -31,9 +31,11 @@ sdk selfupdate v0.0.2
 
 ## GitHub 自动发布
 
-仓库已包含 [发布工作流](.github/workflows/release.yml)。推送一个版本标签即可由
-GitHub Actions 自动测试、交叉编译、创建 GitHub Release，并上传全部压缩包和
-`checksums.txt`：
+仓库已包含 [发布工作流](.github/workflows/release.yml)。在 GitHub 的 **Releases** 页面
+发布一个 Release 后，GitHub Actions 会自动测试、交叉编译，并将全部压缩包、
+`checksums.txt` 和 Homebrew Formula 上传到刚创建的 Release。
+
+推荐先推送标签，再在网页中选择该标签创建 Release：
 
 ```bash
 git tag v0.0.2
@@ -41,7 +43,7 @@ git push origin v0.0.2
 ```
 
 也可以在 GitHub 的 **Actions → Release SDK → Run workflow** 中输入一个已经推送的标签，
-重新生成并覆盖该 Release 的附件。
+为已有 Release 重新生成并覆盖附件。这也适用于工作流加入前已经发布的版本。
 
 首次使用时，请确认仓库的 **Settings → Actions → General → Workflow permissions** 允许工作流
 读写仓库内容；工作流已声明 `contents: write`，用来创建 Release 和上传附件。

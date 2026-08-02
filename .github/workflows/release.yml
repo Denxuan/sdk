@@ -1,9 +1,9 @@
 name: Release SDK
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
       version:
@@ -19,7 +19,7 @@ jobs:
     name: Package and publish
     runs-on: ubuntu-latest
     env:
-      RELEASE_TAG: ${{ inputs.version || github.ref_name }}
+      RELEASE_TAG: ${{ inputs.version || github.event.release.tag_name }}
       GH_TOKEN: ${{ github.token }}
 
     steps:
@@ -41,7 +41,14 @@ jobs:
         run: ./scripts/package-release.sh "$RELEASE_TAG"
 
       - name: Generate Homebrew Formula
-        run: ./scripts/generate-homebrew-formula.sh "$RELEASE_TAG"
+        run: |
+          ./scripts/generate-homebrew-formula.sh "$RELEASE_TAG"
+          # Older release tags used a generator that normalized their URL to vX.Y.Z.
+          # Keep manually re-run releases with tags such as 0.0.1 compatible too.
+          if [[ "$RELEASE_TAG" != v* ]]; then
+            sed -i "s|/download/v${RELEASE_TAG}/|/download/${RELEASE_TAG}/|g" \
+              "dist/v${RELEASE_TAG}/sdk.rb"
+          fi
 
       - name: Create GitHub Release and upload archives
         run: |
