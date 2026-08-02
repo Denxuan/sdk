@@ -21,6 +21,7 @@ Usage:
   sdk uninstall <tool> <version>       Remove a non-default registration
   sdk env                              Print environment variables for current versions
   sdk setup zsh                        Add sdk initialization to ~/.zshrc
+  sdk selfupdate [version]             Update sdk from a GitHub Release
   sdk version                          Print the sdk version
 
 Supported tools: java, nodejs, maven, go

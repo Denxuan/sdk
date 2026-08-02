@@ -53,7 +53,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		}
 		installPath = filepath.Join(stateStore.ToolsDir(), string(tool), version)
 		progress := newDownloadProgress(out, tool, version)
-		err = installer.New().WithProgress(progress.Update).Install(ctx, artifact.URL, installPath)
+		err = installer.New().WithProgress(progress.Update).WithRetry(progress.Retry).Install(ctx, artifact.URL, installPath)
 		progress.Finish()
 		if err != nil {
 			return err

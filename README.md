@@ -53,6 +53,17 @@ SDK_HOME=/tmp/sdk ./sdk list
 | `sdk uninstall <tool> <version>` | 解除非默认版本的管理登记。 |
 | `sdk env` | 输出当前版本对应的环境变量与 `PATH` 设置。 |
 
+## 自身更新
+
+`sdk selfupdate` 会下载 GitHub 最新 Release 中与当前系统匹配的发布包，并替换当前 `sdk` 二进制。也可指定版本：
+
+```bash
+sdk selfupdate
+sdk selfupdate v0.0.2
+```
+
+通过 Homebrew 安装时请使用 `brew upgrade sdk`，而不是 `sdk selfupdate`。
+
 下载完成后，`sdk install` 会询问是否将该版本设为默认版本；输入 `y` 或 `yes` 即可确认。
 
 `sdk update` 成功安装新版本后，会询问是否删除旧的 SDK 管理版本。手工通过 `--path` 登记的目录不会被删除，当前默认版本也会被保留。

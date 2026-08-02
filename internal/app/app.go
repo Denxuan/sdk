@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Denxuan/sdk/internal/buildinfo"
 	"github.com/Denxuan/sdk/internal/model"
 	"github.com/Denxuan/sdk/internal/store"
 )
@@ -28,8 +29,10 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		usage(out)
 		return nil
 	case "version":
-		fmt.Fprintln(out, "sdk 0.1.0")
+		fmt.Fprintf(out, "sdk %s\n", buildinfo.Version)
 		return nil
+	case "selfupdate":
+		return selfUpdate(ctx, args[1:], out)
 	case "env":
 		return printEnvironment(stateStore, out)
 	case "setup":

@@ -2,11 +2,15 @@ package installer
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
+	"context"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestExtractTarGzipAndFindRoot(t *testing.T) {
@@ -72,4 +76,42 @@ func TestProgressWriterReportsDownloadSize(t *testing.T) {
 	if reports[0] != (Progress{Downloaded: 5, Total: 5}) {
 		t.Fatalf("progress = %+v", reports[0])
 	}
+}
+
+func TestDownloadRetriesTemporaryServerFailure(t *testing.T) {
+	requests := 0
+	client := &http.Client{Transport: roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		requests++
+		if requests == 1 {
+			return &http.Response{StatusCode: http.StatusServiceUnavailable, Status: "503 Service Unavailable", Body: io.NopCloser(bytes.NewBufferString("temporary failure"))}, nil
+		}
+		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Body: io.NopCloser(bytes.NewBufferString("package"))}, nil
+	})}
+
+	installer := New()
+	installer.HTTP = client
+	installer.MaxAttempts = 2
+	installer.RetryDelay = func(int) time.Duration { return 0 }
+	retries := 0
+	installer.Retry = func(attempt, total int, err error) { retries++ }
+	target := filepath.Join(t.TempDir(), "package")
+	if err := installer.download(context.Background(), "https://downloads.example.test/package", target); err != nil {
+		t.Fatal(err)
+	}
+	if requests != 2 || retries != 1 {
+		t.Fatalf("requests = %d, retries = %d", requests, retries)
+	}
+	contents, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(contents) != "package" {
+		t.Fatalf("contents = %q", contents)
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
 }

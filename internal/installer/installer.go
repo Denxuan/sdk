@@ -5,8 +5,10 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,16 +22,37 @@ type Progress struct {
 }
 
 type ProgressReporter func(Progress)
+type RetryReporter func(attempt, total int, err error)
+
+const defaultDownloadAttempts = 3
 
 type Installer struct {
-	HTTP     *http.Client
-	Progress ProgressReporter
+	HTTP        *http.Client
+	Progress    ProgressReporter
+	Retry       RetryReporter
+	MaxAttempts int
+	RetryDelay  func(attempt int) time.Duration
+	Sleep       func(time.Duration)
 }
 
-func New() *Installer { return &Installer{HTTP: &http.Client{Timeout: 5 * time.Minute}} }
+func New() *Installer {
+	return &Installer{
+		HTTP:        &http.Client{Timeout: 5 * time.Minute},
+		MaxAttempts: defaultDownloadAttempts,
+		RetryDelay: func(attempt int) time.Duration {
+			return time.Second * time.Duration(1<<(attempt-1))
+		},
+		Sleep: time.Sleep,
+	}
+}
 
 func (i *Installer) WithProgress(reporter ProgressReporter) *Installer {
 	i.Progress = reporter
+	return i
+}
+
+func (i *Installer) WithRetry(reporter RetryReporter) *Installer {
+	i.Retry = reporter
 	return i
 }
 
@@ -66,6 +89,31 @@ func (i *Installer) Install(ctx context.Context, url, destination string) error 
 }
 
 func (i *Installer) download(ctx context.Context, url, target string) error {
+	attempts := i.MaxAttempts
+	if attempts < 1 {
+		attempts = 1
+	}
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		err := i.downloadOnce(ctx, url, target)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if attempt == attempts || !isRetryableDownloadError(err) {
+			break
+		}
+		if i.Retry != nil {
+			i.Retry(attempt+1, attempts, err)
+		}
+		if err := waitForRetry(ctx, i.retryDelay(attempt), i.sleep()); err != nil {
+			return err
+		}
+	}
+	return fmt.Errorf("download failed after %d attempt(s): %w", attempts, lastErr)
+}
+
+func (i *Installer) downloadOnce(ctx context.Context, url, target string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -76,7 +124,7 @@ func (i *Installer) download(ctx context.Context, url, target string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download %s: server returned %s", url, resp.Status)
+		return &downloadStatusError{URL: url, StatusCode: resp.StatusCode, Status: resp.Status}
 	}
 	file, err := os.Create(target)
 	if err != nil {
@@ -89,6 +137,59 @@ func (i *Installer) download(ctx context.Context, url, target string) error {
 		return copyErr
 	}
 	return closeErr
+}
+
+type downloadStatusError struct {
+	URL        string
+	StatusCode int
+	Status     string
+}
+
+func (e *downloadStatusError) Error() string {
+	return fmt.Sprintf("download %s: server returned %s", e.URL, e.Status)
+}
+
+func isRetryableDownloadError(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var statusError *downloadStatusError
+	if errors.As(err, &statusError) {
+		return statusError.StatusCode == http.StatusRequestTimeout || statusError.StatusCode == http.StatusTooManyRequests || statusError.StatusCode >= 500
+	}
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var networkError net.Error
+	return errors.As(err, &networkError)
+}
+
+func (i *Installer) retryDelay(attempt int) time.Duration {
+	if i.RetryDelay == nil {
+		return 0
+	}
+	return i.RetryDelay(attempt)
+}
+
+func (i *Installer) sleep() func(time.Duration) {
+	if i.Sleep == nil {
+		return time.Sleep
+	}
+	return i.Sleep
+}
+
+func waitForRetry(ctx context.Context, delay time.Duration, sleep func(time.Duration)) error {
+	if delay <= 0 {
+		return nil
+	}
+	completed := make(chan struct{})
+	go func() { sleep(delay); close(completed) }()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-completed:
+		return nil
+	}
 }
 
 type progressWriter struct {
