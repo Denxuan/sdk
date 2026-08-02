@@ -51,7 +51,7 @@ git push origin v0.0.2
 ## Homebrew Formula
 
 发布工作流会自动将每次生成的 `sdk.rb` 提交到
-[`Denxuan/homebrew-sdk`](https://github.com/Denxuan/homebrew-sdk) 的 `Formula/sdk.rb`。
+[`Denxuan/homebrew-tab`](https://github.com/Denxuan/homebrew-tab) 的 `Formula/sdk.rb`。
 这个 Formula 会按系统和 CPU 架构下载对应的预编译包，且**没有**
 `depends_on "go" => :build`，所以不会下载或编译 Go。
 
@@ -60,7 +60,7 @@ git push origin v0.0.2
 ```text
 名称：HOMEBREW_TAP_TOKEN
 权限：Fine-grained personal access token
-仓库：Denxuan/homebrew-sdk
+仓库：Denxuan/homebrew-tab
 Repository permissions → Contents: Read and write
 ```
 
@@ -77,7 +77,7 @@ Repository permissions → Contents: Read and write
 用户安装和升级命令为：
 
 ```bash
-brew tap Denxuan/sdk
+brew tap Denxuan/tab
 brew install sdk
 brew upgrade sdk
 ```

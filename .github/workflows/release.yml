@@ -66,14 +66,14 @@ jobs:
         run: |
           if [[ -z "$HOMEBREW_TAP_TOKEN" ]]; then
             echo "Missing HOMEBREW_TAP_TOKEN repository secret." >&2
-            echo "Create a fine-grained token with Contents: Read and write access to Denxuan/homebrew-sdk." >&2
+            echo "Create a fine-grained token with Contents: Read and write access to Denxuan/homebrew-tab." >&2
             exit 1
           fi
 
       - name: Check out Homebrew Tap
         uses: actions/checkout@v4
         with:
-          repository: Denxuan/homebrew-sdk
+          repository: Denxuan/homebrew-tab
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-tap
 
