@@ -50,26 +50,28 @@ git push origin v0.0.2
 
 ## Homebrew Formula
 
-创建一个单独的 Tap 仓库，例如 `Denxuan/homebrew-sdk`，并将每次 Release 自动生成的
-`sdk.rb` 放到该仓库的 `Formula/sdk.rb`。这个 Formula 会按系统和 CPU 架构下载对应的
-预编译包，且**没有** `depends_on "go" => :build`，所以不会下载或编译 Go。
+发布工作流会自动将每次生成的 `sdk.rb` 提交到
+[`Denxuan/homebrew-sdk`](https://github.com/Denxuan/homebrew-sdk) 的 `Formula/sdk.rb`。
+这个 Formula 会按系统和 CPU 架构下载对应的预编译包，且**没有**
+`depends_on "go" => :build`，所以不会下载或编译 Go。
+
+在 `Denxuan/sdk` 仓库设置中创建 Actions Secret：
+
+```text
+名称：HOMEBREW_TAP_TOKEN
+权限：Fine-grained personal access token
+仓库：Denxuan/homebrew-sdk
+Repository permissions → Contents: Read and write
+```
+
+路径为 **Settings → Secrets and variables → Actions → New repository secret**。Token 只会在
+工作流内使用，不会提交到代码或输出到日志。
 
 发布工作流会把 `sdk.rb` 作为 Release 附件上传；也可以本地生成：
 
 ```bash
 ./scripts/package-release.sh v0.0.2
 ./scripts/generate-homebrew-formula.sh v0.0.2
-```
-
-随后提交到 Tap：
-
-```bash
-git clone git@github.com:Denxuan/homebrew-sdk.git
-cp /path/to/sdk/dist/v0.0.2/sdk.rb homebrew-sdk/Formula/sdk.rb
-cd homebrew-sdk
-git add Formula/sdk.rb
-git commit -m "sdk 0.0.2"
-git push
 ```
 
 用户安装和升级命令为：
