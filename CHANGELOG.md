@@ -47,6 +47,11 @@
 - 不传版本时更新到最新 Release；传入版本时更新到指定 Release。
 - 通过 Homebrew 安装时应使用 `brew upgrade sdk`，而不是自身更新。
 
+### 发布打包
+
+- `scripts/package-release.sh <version>`：构建 macOS、Linux、Windows 的预编译发布包和 SHA-256 清单。
+- 预编译包可直接上传 GitHub Release，供 `sdk selfupdate` 和 Homebrew Formula 下载，无需在用户电脑上编译 Go。
+
 ## 存储位置
 
 默认根目录为 `~/.sdk`，可通过 `SDK_HOME` 环境变量覆盖。
