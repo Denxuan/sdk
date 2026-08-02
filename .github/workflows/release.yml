@@ -1,0 +1,53 @@
+name: Release SDK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing tag to release, for example v0.0.2"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-release:
+    name: Package and publish
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.version || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build release archives
+        run: ./scripts/package-release.sh "$RELEASE_TAG"
+
+      - name: Generate Homebrew Formula
+        run: ./scripts/generate-homebrew-formula.sh "$RELEASE_TAG"
+
+      - name: Create GitHub Release and upload archives
+        run: |
+          release_dir="dist/$RELEASE_TAG"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$release_dir"/* --clobber
+          else
+            gh release create "$RELEASE_TAG" "$release_dir"/* --generate-notes --title "$RELEASE_TAG"
+          fi
