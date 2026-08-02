@@ -52,7 +52,8 @@ jobs:
 
       - name: Create GitHub Release and upload archives
         run: |
-          release_dir="dist/$RELEASE_TAG"
+          version="${RELEASE_TAG#v}"
+          release_dir="dist/v$version"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "$release_dir"/* --clobber
           else
