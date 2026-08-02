@@ -123,7 +123,6 @@ func setDefault(stateStore *store.Store, args []string, out io.Writer) error {
 		return fmt.Errorf("update current %s link: %w", tool, err)
 	}
 	fmt.Fprintf(out, "default %s set to %s\n", tool, args[1])
-	fmt.Fprintln(out, "Run `source ~/.zshrc` to apply the new version in this terminal.")
 	return nil
 }
 

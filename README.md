@@ -21,12 +21,14 @@ go build -o sdk .
 eval "$(./sdk env)"
 ```
 
-也可只配置一次，让新的 zsh 终端自动加载当前版本：
+也可只配置一次，让新的 zsh 终端自动加载当前版本，并在 `sdk default`、`sdk use`、`sdk install`、`sdk update` 成功后自动刷新当前终端环境：
 
 ```bash
 ./sdk setup zsh
 source ~/.zshrc
 ```
+
+配置完成后请使用 `sdk default java 21.0.12`，不要使用 `./sdk default ...`；前者是 shell 函数，能自动应用新的环境变量。
 
 `sdk default` 会更新每个工具目录中的 `current` 软链接，例如 `~/.sdk/tools/java/current`。Java 安装会被规整为版本目录就是 `JAVA_HOME`，因此 `~/.sdk/tools/java/25.0.4/bin/java` 可直接执行。`sdk env` 会输出 `JAVA_HOME`、`MAVEN_HOME`、`GOROOT`、`NODE_HOME` 和相应的 `PATH` 设置。
 

@@ -108,6 +108,9 @@ func TestIsAffirmative(t *testing.T) {
 
 func TestReplaceInitializationBlockIsIdempotent(t *testing.T) {
 	block := zshInitialization("/opt/sdk")
+	if !strings.Contains(block, "sdk()") || !strings.Contains(block, "default|use|install|update") {
+		t.Fatalf("initialization does not define the sdk shell function:\n%s", block)
+	}
 	first := replaceInitializationBlock("export EDITOR=vim\n", block)
 	second := replaceInitializationBlock(first, block)
 	if first != second {

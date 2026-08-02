@@ -52,7 +52,25 @@ func addZshInitialization(configPath, binary string) error {
 }
 
 func zshInitialization(binary string) string {
-	return fmt.Sprintf("%s\neval \"$(%q env)\"\n%s\n", setupStart, binary, setupEnd)
+	return fmt.Sprintf(`%s
+sdk() {
+  %q "$@"
+  local sdk_exit=$?
+
+  case "$1" in
+    default|use|install|update)
+      if [ "$sdk_exit" -eq 0 ]; then
+        eval "$(%q env)"
+      fi
+      ;;
+  esac
+
+  return "$sdk_exit"
+}
+
+eval "$(%q env)"
+%s
+`, setupStart, binary, binary, binary, setupEnd)
 }
 
 func replaceInitializationBlock(contents, block string) string {
