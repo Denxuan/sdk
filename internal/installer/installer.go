@@ -3,8 +3,12 @@ package installer
 import (
 	"archive/tar"
 	"archive/zip"
+	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -23,6 +27,12 @@ type Progress struct {
 
 type ProgressReporter func(Progress)
 type RetryReporter func(attempt, total int, err error)
+type VerificationReporter func(Checksum)
+
+type Checksum struct {
+	Algorithm string
+	Value     string
+}
 
 const defaultDownloadAttempts = 3
 
@@ -30,6 +40,7 @@ type Installer struct {
 	HTTP        *http.Client
 	Progress    ProgressReporter
 	Retry       RetryReporter
+	Verify      VerificationReporter
 	MaxAttempts int
 	RetryDelay  func(attempt int) time.Duration
 	Sleep       func(time.Duration)
@@ -56,9 +67,17 @@ func (i *Installer) WithRetry(reporter RetryReporter) *Installer {
 	return i
 }
 
+func (i *Installer) WithVerification(reporter VerificationReporter) *Installer {
+	i.Verify = reporter
+	return i
+}
+
 // Install downloads an archive, extracts it into destination, and returns the
 // final directory. The archive's single top-level folder is removed.
-func (i *Installer) Install(ctx context.Context, url, destination string) error {
+func (i *Installer) Install(ctx context.Context, url, destination string, checksum Checksum) error {
+	if checksum.Value == "" {
+		return errors.New("installation requires an upstream checksum")
+	}
 	if _, err := os.Stat(destination); err == nil {
 		return fmt.Errorf("installation directory already exists: %s", destination)
 	}
@@ -74,6 +93,12 @@ func (i *Installer) Install(ctx context.Context, url, destination string) error 
 	if err := i.download(ctx, url, archive); err != nil {
 		return err
 	}
+	if i.Verify != nil {
+		i.Verify(checksum)
+	}
+	if err := verifyChecksum(archive, checksum); err != nil {
+		return err
+	}
 	extracted := filepath.Join(temp, "extracted")
 	if err := extract(archive, extracted); err != nil {
 		return err
@@ -84,6 +109,39 @@ func (i *Installer) Install(ctx context.Context, url, destination string) error 
 	}
 	if err := os.Rename(root, destination); err != nil {
 		return fmt.Errorf("finalize installation: %w", err)
+	}
+	return nil
+}
+
+func verifyChecksum(path string, checksum Checksum) error {
+	expected, err := hex.DecodeString(strings.TrimSpace(checksum.Value))
+	if err != nil {
+		return fmt.Errorf("decode expected %s checksum: %w", checksum.Algorithm, err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open downloaded archive for checksum: %w", err)
+	}
+	defer file.Close()
+
+	var actual []byte
+	switch strings.ToLower(checksum.Algorithm) {
+	case "sha256":
+		hash := sha256.New()
+		_, err = io.Copy(hash, file)
+		actual = hash.Sum(nil)
+	case "sha512":
+		hash := sha512.New()
+		_, err = io.Copy(hash, file)
+		actual = hash.Sum(nil)
+	default:
+		return fmt.Errorf("unsupported checksum algorithm %q", checksum.Algorithm)
+	}
+	if err != nil {
+		return fmt.Errorf("calculate %s checksum: %w", checksum.Algorithm, err)
+	}
+	if !bytes.Equal(actual, expected) {
+		return fmt.Errorf("%s checksum mismatch for downloaded archive", checksum.Algorithm)
 	}
 	return nil
 }

@@ -43,3 +43,12 @@ func TestStatusErrorIncludesServerStatus(t *testing.T) {
 		t.Fatalf("error = %q", err)
 	}
 }
+
+func TestManifestChecksumFindsRequestedNodeArchive(t *testing.T) {
+	manifest := "abc123  node-v24.0.0-darwin-arm64.tar.gz\n" +
+		"def456  node-v24.0.0-linux-x64.tar.gz\n"
+	checksum, found := manifestChecksum(manifest, "node-v24.0.0-darwin-arm64.tar.gz")
+	if !found || checksum != "abc123" {
+		t.Fatalf("manifest checksum = %q, found = %t", checksum, found)
+	}
+}

@@ -2,6 +2,11 @@
 
 `sdk` 是一个参考 SDKMAN 使用方式的开发工具版本管理 CLI。管理范围严格限定为 Java（默认 Eclipse Temurin）、Maven、Go 和 Node.js。
 
+## 文档
+
+- [功能变更记录](CHANGELOG.md)
+- [发布与 Homebrew 说明](RELEASE.md)
+
 ## 快速开始
 
 ```bash

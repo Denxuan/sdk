@@ -93,6 +93,12 @@ func versionCompare(left, right string) int {
 	return -1
 }
 
+// CompareVersions compares stable-style tool version strings. It returns a
+// positive value when left is newer than right.
+func CompareVersions(left, right string) int {
+	return versionCompare(left, right)
+}
+
 func versionParts(version string) []string {
 	return strings.FieldsFunc(strings.TrimPrefix(version, "v"), func(character rune) bool {
 		return character == '.' || character == '-' || character == '+' || character == '_'

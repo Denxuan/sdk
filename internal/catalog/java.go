@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"net/url"
 	"runtime"
+	"strconv"
 	"strings"
+
+	"github.com/Denxuan/sdk/internal/installer"
 )
 
 const adoptiumReleasesURL = "https://api.adoptium.net/v3/info/available_releases"
@@ -61,26 +64,53 @@ func (c *Client) javaLatestVersion(ctx context.Context, featureVersion int) (str
 }
 
 func javaAssetsURL(featureVersion int, osName, architecture string) string {
+	return javaAssetsURLWithPageSize(featureVersion, osName, architecture, 1)
+}
+
+func javaAssetsURLWithPageSize(featureVersion int, osName, architecture string, pageSize int) string {
 	query := url.Values{
 		"architecture": {architecture},
 		"image_type":   {"jdk"},
 		"jvm_impl":     {"hotspot"},
 		"os":           {osName},
-		"page_size":    {"1"},
+		"page_size":    {fmt.Sprintf("%d", pageSize)},
 		"sort_order":   {"DESC"},
 		"vendor":       {"eclipse"},
 	}
 	return fmt.Sprintf("https://api.adoptium.net/v3/assets/feature_releases/%d/ga?%s", featureVersion, query.Encode())
 }
 
-func javaArtifact(version string) (Artifact, error) {
+func (c *Client) javaArtifact(ctx context.Context, version string) (Artifact, error) {
 	osName, architecture, err := javaPlatform()
 	if err != nil {
 		return Artifact{}, err
 	}
 	featureVersion := strings.SplitN(version, ".", 2)[0]
-	url := fmt.Sprintf("https://api.adoptium.net/v3/binary/latest/%s/ga/%s/%s/jdk/hotspot/normal/eclipse", featureVersion, osName, architecture)
-	return Artifact{URL: url}, nil
+	feature, err := strconv.Atoi(featureVersion)
+	if err != nil {
+		return Artifact{}, fmt.Errorf("parse Java feature version %q: %w", featureVersion, err)
+	}
+	var response []struct {
+		Binary struct {
+			Package struct {
+				Link     string `json:"link"`
+				Checksum string `json:"checksum"`
+			} `json:"package"`
+		} `json:"binary"`
+		VersionData struct {
+			Semver string `json:"semver"`
+		} `json:"version_data"`
+	}
+	if err := c.getJSON(ctx, javaAssetsURLWithPageSize(feature, osName, architecture, 100), &response); err != nil {
+		return Artifact{}, err
+	}
+	for _, release := range response {
+		releaseVersion := strings.SplitN(release.VersionData.Semver, "+", 2)[0]
+		if releaseVersion == version && release.Binary.Package.Link != "" && release.Binary.Package.Checksum != "" {
+			return Artifact{URL: release.Binary.Package.Link, Checksum: installer.Checksum{Algorithm: "sha256", Value: release.Binary.Package.Checksum}}, nil
+		}
+	}
+	return Artifact{}, fmt.Errorf("no Java archive with checksum for %s/%s %s", osName, architecture, version)
 }
 
 func javaPlatform() (string, string, error) {

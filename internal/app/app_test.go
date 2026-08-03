@@ -108,8 +108,12 @@ func TestIsAffirmative(t *testing.T) {
 
 func TestReplaceInitializationBlockIsIdempotent(t *testing.T) {
 	block := zshInitialization("/opt/sdk")
-	if !strings.Contains(block, "sdk()") || !strings.Contains(block, "default|use|install|update") {
-		t.Fatalf("initialization does not define the sdk shell function:\n%s", block)
+	if !strings.Contains(block, "export SDK_HOME=\"/opt/sdk\"") || !strings.Contains(block, "source \"$SDK_HOME/init.zsh\"") {
+		t.Fatalf("initialization does not source the SDK shell script:\n%s", block)
+	}
+	script := zshScript("/opt/sdk/bin/sdk")
+	if !strings.Contains(script, "sdk()") || !strings.Contains(script, "default|use|install|update") || !strings.Contains(script, "add-zsh-hook chpwd") {
+		t.Fatalf("shell script does not define the sdk shell function:\n%s", script)
 	}
 	first := replaceInitializationBlock("export EDITOR=vim\n", block)
 	second := replaceInitializationBlock(first, block)
@@ -152,5 +156,36 @@ func TestOldManagedVersionsExcludesDefaultAndExternalInstalls(t *testing.T) {
 	candidates := oldManagedVersions(installed, "25.0.4", "21.0.12")
 	if !reflect.DeepEqual(candidates, []model.InstalledVersion{{Version: "17.0.20", Managed: true}}) {
 		t.Fatalf("cleanup candidates = %v", candidates)
+	}
+}
+
+func TestDescribeUpdateCheck(t *testing.T) {
+	tests := []struct {
+		name      string
+		installed []model.InstalledVersion
+		current   string
+		latest    string
+		want      string
+	}{
+		{name: "update available", current: "1.25.0", latest: "1.26.5", want: "go: update available 1.25.0 -> 1.26.5"},
+		{name: "already installed", installed: []model.InstalledVersion{{Version: "1.26.5"}}, current: "1.25.0", latest: "1.26.5", want: "go: update to 1.26.5 is already installed; run sdk default go 1.26.5 to use it"},
+		{name: "up to date", current: "1.26.5", latest: "1.26.5", want: "go: up to date (1.26.5)"},
+		{name: "current newer", current: "26.0.2", latest: "25.0.4", want: "go: current version 26.0.2 is newer than the recommended version 25.0.4"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := describeUpdateCheck(model.Go, test.installed, test.current, test.latest); got != test.want {
+				t.Fatalf("description = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestParseUpdateArgs(t *testing.T) {
+	for _, args := range [][]string{{"--check"}, {"go", "--check"}, {"--check", "go"}} {
+		tools, checkOnly, err := parseUpdateArgs(args)
+		if err != nil || !checkOnly || len(tools) > 1 {
+			t.Fatalf("parseUpdateArgs(%v) = %v, %t, %v", args, tools, checkOnly, err)
+		}
 	}
 }

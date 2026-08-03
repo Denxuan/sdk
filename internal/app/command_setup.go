@@ -7,14 +7,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Denxuan/sdk/internal/store"
 )
 
 const (
-	setupStart = "# >>> sdk initialize >>>"
-	setupEnd   = "# <<< sdk initialize <<<"
+	setupStart  = "# >>> sdk initialize >>>"
+	setupEnd    = "# <<< sdk initialize <<<"
+	zshInitFile = "init.zsh"
 )
 
-func setupShell(args []string, out io.Writer) error {
+func setupShell(stateStore *store.Store, args []string, out io.Writer) error {
 	if len(args) != 1 || args[0] != "zsh" {
 		return errors.New("usage: sdk setup zsh")
 	}
@@ -26,21 +29,40 @@ func setupShell(args []string, out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("find home directory: %w", err)
 	}
-	configPath := filepath.Join(home, ".zshrc")
-	if err := addZshInitialization(configPath, binary); err != nil {
+	sdkHome, err := filepath.Abs(stateStore.Home)
+	if err != nil {
+		return fmt.Errorf("resolve SDK home: %w", err)
+	}
+	initPath := filepath.Join(sdkHome, zshInitFile)
+	if err := writeZshInitScript(initPath, binary); err != nil {
 		return err
 	}
+	configPath := filepath.Join(home, ".zshrc")
+	if err := addZshInitialization(configPath, sdkHome); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "Created sdk shell script at %s\n", initPath)
 	fmt.Fprintf(out, "Added sdk initialization to %s\n", configPath)
 	fmt.Fprintf(out, "Run: source %s\n", configPath)
 	return nil
 }
 
-func addZshInitialization(configPath, binary string) error {
+func writeZshInitScript(path, binary string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("create SDK home: %w", err)
+	}
+	if err := os.WriteFile(path, []byte(zshScript(binary)), 0644); err != nil {
+		return fmt.Errorf("write zsh initialization script: %w", err)
+	}
+	return nil
+}
+
+func addZshInitialization(configPath, sdkHome string) error {
 	contents, err := os.ReadFile(configPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("read zsh configuration: %w", err)
 	}
-	block := zshInitialization(binary)
+	block := zshInitialization(sdkHome)
 	updated := replaceInitializationBlock(string(contents), block)
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
 		return fmt.Errorf("create zsh configuration directory: %w", err)
@@ -51,8 +73,27 @@ func addZshInitialization(configPath, binary string) error {
 	return nil
 }
 
-func zshInitialization(binary string) string {
+func zshInitialization(sdkHome string) string {
 	return fmt.Sprintf(`%s
+export SDK_HOME=%q
+if [ -r "$SDK_HOME/%s" ]; then
+  source "$SDK_HOME/%s"
+fi
+%s
+`, setupStart, sdkHome, zshInitFile, zshInitFile, setupEnd)
+}
+
+func zshScript(binary string) string {
+	return fmt.Sprintf(`typeset -U path
+
+_sdk_refresh_environment() {
+  eval "$(%q env --project)"
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook -d chpwd _sdk_refresh_environment 2>/dev/null
+add-zsh-hook chpwd _sdk_refresh_environment
+
 sdk() {
   %q "$@"
   local sdk_exit=$?
@@ -60,7 +101,7 @@ sdk() {
   case "$1" in
     default|use|install|update)
       if [ "$sdk_exit" -eq 0 ]; then
-        eval "$(%q env)"
+        _sdk_refresh_environment
       fi
       ;;
   esac
@@ -68,9 +109,8 @@ sdk() {
   return "$sdk_exit"
 }
 
-eval "$(%q env)"
-%s
-`, setupStart, binary, binary, binary, setupEnd)
+_sdk_refresh_environment
+`, binary, binary)
 }
 
 func replaceInitializationBlock(contents, block string) string {

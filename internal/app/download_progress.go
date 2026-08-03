@@ -42,6 +42,13 @@ func (p *downloadProgress) Retry(attempt, total int, err error) {
 	fmt.Fprintf(p.out, "Download interrupted; retrying %s %s (%d/%d): %v\n", p.tool, p.version, attempt, total, err)
 }
 
+func (p *downloadProgress) Verify(checksum installer.Checksum) {
+	if p.active {
+		fmt.Fprintln(p.out)
+	}
+	fmt.Fprintf(p.out, "Verifying %s checksum for %s %s...\n", checksum.Algorithm, p.tool, p.version)
+}
+
 func formatBytes(bytes int64) string {
 	const kilobyte = 1024
 	const megabyte = 1024 * 1024

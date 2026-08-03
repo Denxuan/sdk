@@ -25,17 +25,22 @@
 - `sdk list [tool]`：查看已管理版本并标记默认版本。
 - `sdk uninstall <tool> <version>`：卸载非默认版本。
 - Java 在 macOS 上安装后会规整目录，使版本目录本身就是 `JAVA_HOME`，例如 `~/.sdk/tools/java/25.0.4/bin/java`。
+- 下载完成后强制校验官方摘要：Java、Go、Node.js 使用 SHA-256；Maven 使用 SHA-512。校验失败的包不会解压或安装。
 
 ### 环境变量与 Shell 集成
 
 - 每个工具都有 `~/.sdk/tools/<tool>/current` 软链接，指向当前默认版本。
 - `sdk env` 输出 `JAVA_HOME`、`MAVEN_HOME`、`M2_HOME`、`GOROOT`、`NODE_HOME` 和对应的 `PATH`。
-- `sdk setup zsh` 会以幂等方式将 SDK 初始化函数加入 `~/.zshrc`。
+- `sdk doctor`：检查安装目录、`current` 软链接、当前二进制及环境变量配置。
+- `sdk path <tool>`：输出当前工具目录；`sdk which <tool>`：输出当前工具实际二进制路径。
+- 项目级 `.sdk-version`：`sdk project init` 根据全局默认版本创建文件，`sdk project set <tool> <version>` 设置项目版本，`sdk env --project` 使用最近项目文件覆盖全局版本；zsh 初始化后切换目录会自动刷新环境。
+- `sdk setup zsh` 会在 `$SDK_HOME/init.zsh` 创建 Shell 函数和目录切换钩子，并以幂等方式在 `~/.zshrc` 中引入该脚本。
 - 初始化后的 `sdk()` shell 函数会在 `default`、`use`、`install`、`update` 成功后自动刷新当前终端的环境变量，无需手动 `source ~/.zshrc`。
 
 ### 更新与下载可靠性
 
 - `sdk update [tool]`：更新全部已管理工具，或仅更新指定工具。
+- `sdk update [tool] --check`：仅检查可用更新，不下载、不切换版本或删除旧版本。
 - 更新后会询问是否将新版本设为默认版本。
 - 更新后会询问是否删除旧的 SDK 管理版本；手工通过 `--path` 登记的目录不会删除，当前默认版本也不会删除。
 - 下载过程显示进度，包括百分比、已下载大小和总大小。
@@ -68,7 +73,6 @@
 
 ## 后续建议
 
-- 官方 SHA-256 校验。
 - 下载缓存与断点续传。
 - 安装后的可执行文件验证。
 - 远程版本索引缓存。

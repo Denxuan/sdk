@@ -9,16 +9,18 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Denxuan/sdk/internal/catalog"
 	"github.com/Denxuan/sdk/internal/model"
 	"github.com/Denxuan/sdk/internal/store"
 )
 
 func update(ctx context.Context, stateStore *store.Store, args []string, out io.Writer) error {
-	if len(args) > 1 {
-		return errors.New("usage: sdk update [tool]")
+	targetArgs, checkOnly, err := parseUpdateArgs(args)
+	if err != nil {
+		return err
 	}
 
-	targets, err := updateTargets(stateStore, args)
+	targets, err := updateTargets(stateStore, targetArgs)
 	if err != nil {
 		return err
 	}
@@ -28,11 +30,36 @@ func update(ctx context.Context, stateStore *store.Store, args []string, out io.
 	}
 
 	for _, tool := range targets {
+		if checkOnly {
+			if err := checkUpdateTool(ctx, stateStore, tool, out); err != nil {
+				return err
+			}
+			continue
+		}
 		if err := updateTool(ctx, stateStore, tool, out); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func parseUpdateArgs(args []string) ([]string, bool, error) {
+	toolArgs := make([]string, 0, 1)
+	checkOnly := false
+	for _, arg := range args {
+		if arg == "--check" {
+			if checkOnly {
+				return nil, false, errors.New("usage: sdk update [tool] [--check]")
+			}
+			checkOnly = true
+			continue
+		}
+		if strings.HasPrefix(arg, "-") || len(toolArgs) == 1 {
+			return nil, false, errors.New("usage: sdk update [tool] [--check]")
+		}
+		toolArgs = append(toolArgs, arg)
+	}
+	return toolArgs, checkOnly, nil
 }
 
 func updateTargets(stateStore *store.Store, args []string) ([]model.Tool, error) {
@@ -76,6 +103,39 @@ func updateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, o
 		return err
 	}
 	return offerOldVersionCleanup(stateStore, tool, version, previousVersions, out, os.Stdin)
+}
+
+func checkUpdateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, out io.Writer) error {
+	latest, err := recommendedVersion(ctx, tool)
+	if err != nil {
+		return err
+	}
+	state, err := stateStore.Load()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(out, describeUpdateCheck(tool, state.Installed[tool], state.Defaults[tool], latest))
+	return nil
+}
+
+func describeUpdateCheck(tool model.Tool, installed []model.InstalledVersion, currentVersion, latestVersion string) string {
+	if currentVersion == "" {
+		if hasVersion(installed, latestVersion) {
+			return fmt.Sprintf("%s: %s is installed, but no default version is set", tool, latestVersion)
+		}
+		return fmt.Sprintf("%s: %s is available (no default version is set)", tool, latestVersion)
+	}
+	comparison := catalog.CompareVersions(latestVersion, currentVersion)
+	if comparison <= 0 {
+		if comparison == 0 {
+			return fmt.Sprintf("%s: up to date (%s)", tool, currentVersion)
+		}
+		return fmt.Sprintf("%s: current version %s is newer than the recommended version %s", tool, currentVersion, latestVersion)
+	}
+	if hasVersion(installed, latestVersion) {
+		return fmt.Sprintf("%s: update to %s is already installed; run sdk default %s %s to use it", tool, latestVersion, tool, latestVersion)
+	}
+	return fmt.Sprintf("%s: update available %s -> %s", tool, currentVersion, latestVersion)
 }
 
 func offerOldVersionCleanup(stateStore *store.Store, tool model.Tool, newVersion string, previous []model.InstalledVersion, out io.Writer, in io.Reader) error {

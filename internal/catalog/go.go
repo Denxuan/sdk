@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+
+	"github.com/Denxuan/sdk/internal/installer"
 )
 
 const goReleasesURL = "https://go.dev/dl/?mode=json&include=all"
@@ -23,11 +25,29 @@ func (c *Client) goVersions(ctx context.Context) ([]Version, error) {
 	return stableVersions(versions), nil
 }
 
-func goArtifact(version string) (Artifact, error) {
-	extension := "tar.gz"
-	if runtime.GOOS == "windows" {
-		extension = "zip"
+func (c *Client) goArtifact(ctx context.Context, version string) (Artifact, error) {
+	var response []struct {
+		Version string `json:"version"`
+		Files   []struct {
+			Filename string `json:"filename"`
+			OS       string `json:"os"`
+			Arch     string `json:"arch"`
+			Kind     string `json:"kind"`
+			SHA256   string `json:"sha256"`
+		} `json:"files"`
 	}
-	url := fmt.Sprintf("https://go.dev/dl/go%s.%s-%s.%s", version, runtime.GOOS, runtime.GOARCH, extension)
-	return Artifact{URL: url}, nil
+	if err := c.getJSON(ctx, goReleasesURL, &response); err != nil {
+		return Artifact{}, err
+	}
+	for _, release := range response {
+		if strings.TrimPrefix(release.Version, "go") != version {
+			continue
+		}
+		for _, file := range release.Files {
+			if file.OS == runtime.GOOS && file.Arch == runtime.GOARCH && file.Kind == "archive" && file.SHA256 != "" {
+				return Artifact{URL: "https://go.dev/dl/" + file.Filename, Checksum: installer.Checksum{Algorithm: "sha256", Value: file.SHA256}}, nil
+			}
+		}
+	}
+	return Artifact{}, fmt.Errorf("no Go archive with checksum for %s/%s %s", runtime.GOOS, runtime.GOARCH, version)
 }

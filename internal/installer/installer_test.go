@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"os"
@@ -107,6 +109,24 @@ func TestDownloadRetriesTemporaryServerFailure(t *testing.T) {
 	}
 	if string(contents) != "package" {
 		t.Fatalf("contents = %q", contents)
+	}
+}
+
+func TestVerifyChecksumRejectsModifiedArchive(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "package")
+	if err := os.WriteFile(path, []byte("original package"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	expectedHash := sha256.Sum256([]byte("original package"))
+	checksum := Checksum{Algorithm: "sha256", Value: hex.EncodeToString(expectedHash[:])}
+	if err := verifyChecksum(path, checksum); err != nil {
+		t.Fatalf("valid checksum failed: %v", err)
+	}
+	if err := os.WriteFile(path, []byte("modified package"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyChecksum(path, checksum); err == nil {
+		t.Fatal("modified archive passed checksum verification")
 	}
 }
 

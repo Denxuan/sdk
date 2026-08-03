@@ -34,9 +34,17 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	case "selfupdate":
 		return selfUpdate(ctx, args[1:], out)
 	case "env":
-		return printEnvironment(stateStore, out)
+		return printEnvironment(stateStore, args[1:], out)
+	case "doctor":
+		return doctor(stateStore, args[1:], out)
+	case "path":
+		return printToolPath(stateStore, args[1:], out)
+	case "which":
+		return printToolExecutable(stateStore, args[1:], out)
+	case "project":
+		return project(stateStore, args[1:], out)
 	case "setup":
-		return setupShell(args[1:], out)
+		return setupShell(stateStore, args[1:], out)
 	case "list":
 		return list(stateStore, args[1:], out)
 	case "current":

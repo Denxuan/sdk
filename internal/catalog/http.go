@@ -32,6 +32,19 @@ func (c *Client) getXML(ctx context.Context, url string, destination any) error 
 	})
 }
 
+func (c *Client) getText(ctx context.Context, url string) (string, error) {
+	var text string
+	err := c.decode(ctx, url, func(reader io.Reader) error {
+		data, err := io.ReadAll(reader)
+		if err != nil {
+			return err
+		}
+		text = string(data)
+		return nil
+	})
+	return text, err
+}
+
 func (c *Client) decode(ctx context.Context, url string, decode func(io.Reader) error) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

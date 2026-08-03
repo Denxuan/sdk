@@ -47,13 +47,13 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 	installPath := existingPath
 	managed := false
 	if installPath == "" {
-		artifact, err := catalog.New().Artifact(tool, version)
+		artifact, err := catalog.New().Artifact(ctx, tool, version)
 		if err != nil {
 			return err
 		}
 		installPath = filepath.Join(stateStore.ToolsDir(), string(tool), version)
 		progress := newDownloadProgress(out, tool, version)
-		err = installer.New().WithProgress(progress.Update).WithRetry(progress.Retry).Install(ctx, artifact.URL, installPath)
+		err = installer.New().WithProgress(progress.Update).WithRetry(progress.Retry).WithVerification(progress.Verify).Install(ctx, artifact.URL, installPath, artifact.Checksum)
 		progress.Finish()
 		if err != nil {
 			return err

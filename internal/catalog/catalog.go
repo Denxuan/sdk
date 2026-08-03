@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Denxuan/sdk/internal/installer"
 	"github.com/Denxuan/sdk/internal/model"
 )
 
@@ -14,7 +15,8 @@ type Client struct {
 }
 
 type Artifact struct {
-	URL string
+	URL      string
+	Checksum installer.Checksum
 }
 
 type Version struct {
@@ -41,16 +43,16 @@ func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]Version, erro
 	}
 }
 
-func (c *Client) Artifact(tool model.Tool, version string) (Artifact, error) {
+func (c *Client) Artifact(ctx context.Context, tool model.Tool, version string) (Artifact, error) {
 	switch tool {
 	case model.Java:
-		return javaArtifact(version)
+		return c.javaArtifact(ctx, version)
 	case model.Maven:
-		return mavenArtifact(version)
+		return c.mavenArtifact(ctx, version)
 	case model.Go:
-		return goArtifact(version)
+		return c.goArtifact(ctx, version)
 	case model.NodeJS:
-		return nodeArtifact(version)
+		return c.nodeArtifact(ctx, version)
 	default:
 		return Artifact{}, fmt.Errorf("unsupported tool %q", tool)
 	}
