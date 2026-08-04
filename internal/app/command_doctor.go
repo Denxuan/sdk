@@ -100,17 +100,19 @@ func checkCurrentLink(report *doctorReport, stateStore *store.Store, tool model.
 	}
 	report.ok(fmt.Sprintf("%s current", tool), currentPath)
 
-	executable := filepath.Join(currentPath, "bin", executableName(tool))
-	info, err = os.Stat(executable)
-	if err != nil {
-		report.error(fmt.Sprintf("%s executable", tool), fmt.Sprintf("%s: %v", executable, err))
-		return
+	for _, name := range executableNames(tool) {
+		executable := filepath.Join(currentPath, "bin", name)
+		info, err = os.Stat(executable)
+		if err != nil {
+			report.error(fmt.Sprintf("%s executable %s", tool, name), fmt.Sprintf("%s: %v", executable, err))
+			continue
+		}
+		if info.IsDir() || info.Mode()&0111 == 0 {
+			report.error(fmt.Sprintf("%s executable %s", tool, name), fmt.Sprintf("%s is not executable", executable))
+			continue
+		}
+		report.ok(fmt.Sprintf("%s executable %s", tool, name), executable)
 	}
-	if info.IsDir() || info.Mode()&0111 == 0 {
-		report.error(fmt.Sprintf("%s executable", tool), fmt.Sprintf("%s is not executable", executable))
-		return
-	}
-	report.ok(fmt.Sprintf("%s executable", tool), executable)
 }
 
 func checkEnvironment(report *doctorReport, stateStore *store.Store, tool model.Tool) {
@@ -132,17 +134,21 @@ func checkEnvironment(report *doctorReport, stateStore *store.Store, tool model.
 }
 
 func executableName(tool model.Tool) string {
+	return executableNames(tool)[0]
+}
+
+func executableNames(tool model.Tool) []string {
 	switch tool {
 	case model.Java:
-		return "java"
+		return []string{"java"}
 	case model.Maven:
-		return "mvn"
+		return []string{"mvn"}
 	case model.Go:
-		return "go"
+		return []string{"go"}
 	case model.NodeJS:
-		return "node"
+		return []string{"node", "npm", "npx"}
 	default:
-		return string(tool)
+		return []string{string(tool)}
 	}
 }
 

@@ -366,6 +366,16 @@ func extractTAR(reader *tar.Reader, destination string) error {
 			if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
 				return err
 			}
+		case tar.TypeSymlink:
+			if err := safeSymlinkTarget(destination, target, header.Linkname); err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			if err := os.Symlink(header.Linkname, target); err != nil {
+				return err
+			}
 		case tar.TypeReg:
 			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 				return err
@@ -384,6 +394,21 @@ func extractTAR(reader *tar.Reader, destination string) error {
 			}
 		}
 	}
+}
+
+// safeSymlinkTarget allows relative archive links only when their resolved
+// location stays within the extraction root. The original relative target is
+// retained so links such as Node's bin/npm continue to work after installation.
+func safeSymlinkTarget(root, linkPath, linkTarget string) error {
+	if filepath.IsAbs(linkTarget) {
+		return fmt.Errorf("archive contains absolute symbolic link %q", linkTarget)
+	}
+	resolved := filepath.Join(filepath.Dir(linkPath), linkTarget)
+	relativePath, err := filepath.Rel(root, resolved)
+	if err != nil || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("archive contains unsafe symbolic link %q", linkTarget)
+	}
+	return nil
 }
 
 func safePath(root, name string) (string, error) {

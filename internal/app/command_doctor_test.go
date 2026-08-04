@@ -43,7 +43,7 @@ func TestDoctorReportsHealthyCurrentInstallation(t *testing.T) {
 	if err := Run(context.Background(), []string{"doctor"}, &out, &bytes.Buffer{}); err != nil {
 		t.Fatalf("doctor failed: %v\n%s", err, out.String())
 	}
-	for _, expected := range []string{"[OK]   go current", "[OK]   go executable", "[OK]   go PATH", "[OK]   GOROOT", "0 error(s)"} {
+	for _, expected := range []string{"[OK]   go current", "[OK]   go executable go", "[OK]   go PATH", "[OK]   GOROOT", "0 error(s)"} {
 		if !strings.Contains(out.String(), expected) {
 			t.Errorf("doctor output does not contain %q:\n%s", expected, out.String())
 		}

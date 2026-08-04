@@ -24,10 +24,13 @@ func TestExtractTarGzipAndFindRoot(t *testing.T) {
 	}
 	gzipWriter := gzip.NewWriter(file)
 	tarWriter := tar.NewWriter(gzipWriter)
-	if err := tarWriter.WriteHeader(&tar.Header{Name: "tool-1.0/bin/tool", Mode: 0755, Size: 2}); err != nil {
+	if err := tarWriter.WriteHeader(&tar.Header{Name: "tool-1.0/lib/npm.js", Mode: 0644, Size: 2}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tarWriter.Write([]byte("ok")); err != nil {
+		t.Fatal(err)
+	}
+	if err := tarWriter.WriteHeader(&tar.Header{Name: "tool-1.0/bin/npm", Typeflag: tar.TypeSymlink, Linkname: "../lib/npm.js"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := tarWriter.Close(); err != nil {
@@ -51,12 +54,19 @@ func TestExtractTarGzipAndFindRoot(t *testing.T) {
 	if root != filepath.Join(extracted, "tool-1.0") {
 		t.Fatalf("root = %s", root)
 	}
-	contents, err := os.ReadFile(filepath.Join(root, "bin", "tool"))
+	contents, err := os.ReadFile(filepath.Join(root, "bin", "npm"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(contents) != "ok" {
 		t.Fatalf("contents = %q", contents)
+	}
+}
+
+func TestSafeSymlinkTargetRejectsEscapingArchive(t *testing.T) {
+	root := t.TempDir()
+	if err := safeSymlinkTarget(root, filepath.Join(root, "bin", "npm"), "../../outside"); err == nil {
+		t.Fatal("unsafe symbolic link was accepted")
 	}
 }
 
