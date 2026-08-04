@@ -50,7 +50,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	case "current":
 		return current(stateStore, args[1:], out)
 	case "use", "default":
-		return setDefault(stateStore, args[1:], out)
+		return setDefault(ctx, stateStore, args[1:], out, os.Stdin)
 	case "uninstall":
 		return uninstall(stateStore, args[1:], out)
 	case "install":

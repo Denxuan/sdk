@@ -98,20 +98,9 @@ func updateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, o
 		return nil
 	}
 	previousVersions := state.Installed[tool]
-	previousDefault, hasPreviousDefault := findInstallation(previousVersions, state.Defaults[tool])
 	fmt.Fprintf(out, "updating %s to %s\n", tool, version)
 	if err := install(ctx, stateStore, []string{string(tool), version}, out); err != nil {
 		return err
-	}
-	if tool == model.NodeJS && hasPreviousDefault && previousDefault.Version != version {
-		state, err := stateStore.Load()
-		if err != nil {
-			return err
-		}
-		newInstallation, found := findInstallation(state.Installed[tool], version)
-		if found {
-			migrateNodeGlobalPackages(ctx, previousDefault.Path, newInstallation.Path, out)
-		}
 	}
 	return offerOldVersionCleanup(stateStore, tool, version, previousVersions, out, os.Stdin)
 }

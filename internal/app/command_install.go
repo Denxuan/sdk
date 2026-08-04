@@ -83,7 +83,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 			return err
 		}
 		if setAsDefault {
-			return setDefault(stateStore, []string{string(tool), version}, out)
+			return setDefault(ctx, stateStore, []string{string(tool), version}, out, os.Stdin)
 		}
 	}
 	return nil

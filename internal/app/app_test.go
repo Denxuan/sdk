@@ -106,6 +106,17 @@ func TestIsAffirmative(t *testing.T) {
 	}
 }
 
+func TestAskToMigrateConfiguration(t *testing.T) {
+	var out bytes.Buffer
+	migrate, err := askToMigrateConfiguration(&out, strings.NewReader("y\n"), model.NodeJS, "20.0.0", "22.0.0")
+	if err != nil || !migrate {
+		t.Fatalf("migration answer = %t, %v", migrate, err)
+	}
+	if !strings.Contains(out.String(), "Migrate nodejs configuration from 20.0.0 to 22.0.0?") {
+		t.Fatalf("prompt = %q", out.String())
+	}
+}
+
 func TestReplaceInitializationBlockIsIdempotent(t *testing.T) {
 	block := zshInitialization("/opt/sdk")
 	if !strings.Contains(block, "export SDK_HOME=\"/opt/sdk\"") || !strings.Contains(block, "source \"$SDK_HOME/init.zsh\"") {

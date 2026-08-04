@@ -1,6 +1,8 @@
 package app
 
 import (
+	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -94,7 +96,7 @@ func printCurrentVersions(out io.Writer, state model.State) {
 	}
 }
 
-func setDefault(stateStore *store.Store, args []string, out io.Writer) error {
+func setDefault(ctx context.Context, stateStore *store.Store, args []string, out io.Writer, in io.Reader) error {
 	if len(args) != 2 {
 		return errors.New("usage: sdk default <tool> <version>")
 	}
@@ -109,6 +111,8 @@ func setDefault(stateStore *store.Store, args []string, out io.Writer) error {
 	if !hasVersion(state.Installed[tool], args[1]) {
 		return fmt.Errorf("%s %s is not installed", tool, args[1])
 	}
+	previousVersion := state.Defaults[tool]
+	previousInstallation, hasPreviousInstallation := findInstallation(state.Installed[tool], previousVersion)
 	state.Defaults[tool] = args[1]
 	if err := stateStore.Save(state); err != nil {
 		return err
@@ -123,7 +127,32 @@ func setDefault(stateStore *store.Store, args []string, out io.Writer) error {
 		return fmt.Errorf("update current %s link: %w", tool, err)
 	}
 	fmt.Fprintf(out, "default %s set to %s\n", tool, args[1])
+	if hasPreviousInstallation && previousVersion != args[1] && supportsConfigurationMigration(tool) {
+		migrate, err := askToMigrateConfiguration(out, in, tool, previousVersion, args[1])
+		if err != nil {
+			return err
+		}
+		if migrate {
+			migrateToolConfiguration(ctx, tool, previousInstallation.Path, installation.Path, out)
+		}
+	}
 	return nil
+}
+
+func supportsConfigurationMigration(tool model.Tool) bool {
+	return tool == model.NodeJS || tool == model.Maven
+}
+
+func askToMigrateConfiguration(out io.Writer, in io.Reader, tool model.Tool, fromVersion, toVersion string) (bool, error) {
+	fmt.Fprintf(out, "Migrate %s configuration from %s to %s? [y/N]: ", tool, fromVersion, toVersion)
+	answer, err := bufio.NewReader(in).ReadString('\n')
+	if err != nil && len(answer) == 0 {
+		if errors.Is(err, io.EOF) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isAffirmative(answer), nil
 }
 
 func uninstall(stateStore *store.Store, args []string, out io.Writer) error {

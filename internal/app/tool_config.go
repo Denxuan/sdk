@@ -5,11 +5,73 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/Denxuan/sdk/internal/model"
 )
+
+func migrateToolConfiguration(ctx context.Context, tool model.Tool, sourcePath, destinationPath string, out io.Writer) {
+	switch tool {
+	case model.NodeJS:
+		migrateNodeGlobalPackages(ctx, sourcePath, destinationPath, out)
+	case model.Maven:
+		migrateFiles(out, sourcePath, destinationPath, []string{
+			filepath.Join("conf", "settings.xml"),
+			filepath.Join("conf", "toolchains.xml"),
+		})
+	case model.Go:
+		fmt.Fprintln(out, "Go configuration is user-global and does not need migration.")
+	case model.Java:
+		fmt.Fprintln(out, "Java truststore was kept from the new JDK; custom certificates are not overwritten automatically.")
+	}
+}
+
+func migrateFiles(out io.Writer, sourcePath, destinationPath string, relativePaths []string) {
+	migrated := 0
+	for _, relativePath := range relativePaths {
+		source := filepath.Join(sourcePath, relativePath)
+		destination := filepath.Join(destinationPath, relativePath)
+		data, err := os.ReadFile(source)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			fmt.Fprintf(out, "Warning: could not read configuration %s: %v\n", source, err)
+			continue
+		}
+		if _, err := os.Stat(destination); err == nil {
+			backup := destination + ".sdk-default"
+			if _, backupErr := os.Stat(backup); backupErr == nil {
+				fmt.Fprintf(out, "Warning: skipped %s because backup already exists: %s\n", relativePath, backup)
+				continue
+			}
+			if err := os.Rename(destination, backup); err != nil {
+				fmt.Fprintf(out, "Warning: could not preserve new default %s: %v\n", relativePath, err)
+				continue
+			}
+		} else if !os.IsNotExist(err) {
+			fmt.Fprintf(out, "Warning: could not inspect destination %s: %v\n", destination, err)
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
+			fmt.Fprintf(out, "Warning: could not create configuration directory for %s: %v\n", relativePath, err)
+			continue
+		}
+		if err := os.WriteFile(destination, data, 0644); err != nil {
+			fmt.Fprintf(out, "Warning: could not migrate %s: %v\n", relativePath, err)
+			continue
+		}
+		fmt.Fprintf(out, "Migrated Maven configuration %s\n", relativePath)
+		migrated++
+	}
+	if migrated == 0 {
+		fmt.Fprintln(out, "No Maven version-local configuration to migrate.")
+	}
+}
 
 type npmGlobalPackage struct {
 	Name    string

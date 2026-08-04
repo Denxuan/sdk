@@ -42,6 +42,8 @@
 - `sdk update [tool]`：更新全部已管理工具，或仅更新指定工具。
 - `sdk update [tool] --check`：仅检查可用更新，不下载、不切换版本或删除旧版本。
 - `sdk update nodejs`：升级后自动迁移旧默认 Node.js 中第三方 `npm -g` 包到新版本；跳过 npm 与 corepack 自带组件。
+- `sdk update maven`：迁移旧 Maven 版本中的 `conf/settings.xml` 和 `conf/toolchains.xml`，并保留新版本默认配置备份。
+- Go 的 `go env -w` 配置位于用户目录，本来就是跨 Go 版本共享；Java 新版本的 `cacerts` 不会被旧文件覆盖。
 - 更新后会询问是否将新版本设为默认版本。
 - 更新后会询问是否删除旧的 SDK 管理版本；手工通过 `--path` 登记的目录不会删除，当前默认版本也不会删除。
 - 下载过程显示进度，包括百分比、已下载大小和总大小。
