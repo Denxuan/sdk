@@ -35,11 +35,33 @@ func printEnvironment(stateStore *store.Store, args []string, out io.Writer) err
 			fmt.Fprintf(out, "export %s=%q\n", variable.name, variable.value)
 		}
 		pathEntries = append(pathEntries, filepath.Join(target.Path, "bin"))
+		if tool == model.Go {
+			pathEntries = append(pathEntries, goToolPaths()...)
+		}
 	}
 	if len(pathEntries) > 0 {
 		fmt.Fprintf(out, "export PATH=%q:$PATH\n", strings.Join(pathEntries, ":"))
 	}
 	return nil
+}
+
+func goToolPaths() []string {
+	if gobin := os.Getenv("GOBIN"); gobin != "" {
+		return []string{gobin}
+	}
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil
+		}
+		gopath = filepath.Join(home, "go")
+	}
+	paths := filepath.SplitList(gopath)
+	for index := range paths {
+		paths[index] = filepath.Join(paths[index], "bin")
+	}
+	return paths
 }
 
 type environmentTarget struct {

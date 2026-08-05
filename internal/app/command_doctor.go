@@ -123,6 +123,15 @@ func checkEnvironment(report *doctorReport, stateStore *store.Store, tool model.
 	} else {
 		report.warn(fmt.Sprintf("%s PATH", tool), fmt.Sprintf("%s is missing; run eval \"$(sdk env)\"", expectedBin))
 	}
+	if tool == model.Go {
+		for _, goPath := range goToolPaths() {
+			if pathContains(os.Getenv("PATH"), goPath) {
+				report.ok("go tools PATH", goPath)
+			} else {
+				report.warn("go tools PATH", fmt.Sprintf("%s is missing; run eval \"$(sdk env)\"", goPath))
+			}
+		}
+	}
 
 	for _, variable := range environmentVariables(tool, currentPath) {
 		if os.Getenv(variable.name) == variable.value {
