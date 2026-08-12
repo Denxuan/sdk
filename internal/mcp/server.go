@@ -19,11 +19,11 @@ type Server struct {
 func NewServer(home string) *Server { return &Server{read: service.NewRead(home)} }
 
 type toolInput struct {
-	Tool *string `json:"tool,omitempty" jsonschema:"Tool name (java, nodejs, maven, or go)."`
+	Tool *string `json:"tool,omitempty" jsonschema:"工具名称 / Tool name: java, nodejs, maven, or go."`
 }
 
 type directoryInput struct {
-	Directory string `json:"directory,omitempty" jsonschema:"Project directory; defaults to the current working directory."`
+	Directory string `json:"directory,omitempty" jsonschema:"项目目录 / Project directory; 留空表示当前工作目录 / empty means the current working directory."`
 }
 
 type installedOutput struct {
@@ -52,19 +52,19 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) protocolServer() *sdkmcp.Server {
 	server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "sdk", Version: buildinfo.Version}, nil)
 
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_list_installed", Description: "List SDK-managed installations, optionally filtered by tool."}, s.listInstalled)
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_current_versions", Description: "List the currently selected version for every tool."}, s.currentVersions)
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_available_versions", Description: "List stable remote versions for one tool."}, s.availableVersions)
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_path", Description: "Return the current symlink path for a tool."}, s.path)
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_project_versions", Description: "Read the nearest .sdk-version file."}, s.projectVersions)
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_doctor", Description: "Run read-only SDK health checks."}, s.doctor)
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_state", Description: "Return the SDK state snapshot."}, s.state)
-	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_check_updates", Description: "Check whether installed tools have newer stable versions."}, s.checkUpdates)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_list_installed", Description: "列出 SDK 管理的已安装版本，可按工具筛选。/ List SDK-managed installed versions, optionally filtered by tool."}, s.listInstalled)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_current_versions", Description: "列出所有工具当前正在使用的版本。/ List the currently active version for every tool."}, s.currentVersions)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_available_versions", Description: "列出指定工具的远程正式稳定版本。/ List stable official remote releases for one tool."}, s.availableVersions)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_path", Description: "返回工具当前版本的目录、current 软链接和可执行文件路径。/ Return the current tool directory, current symlink, and executable paths."}, s.path)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_project_versions", Description: "读取当前目录或父目录最近的 .sdk-version 项目版本文件。/ Read the nearest project .sdk-version file from the given directory or its parents."}, s.projectVersions)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_doctor", Description: "执行只读的 SDK 安装、链接和环境健康检查。/ Run read-only SDK installation, link, and environment health checks."}, s.doctor)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_state", Description: "返回 SDK 的本地状态快照，包括默认版本和已安装版本。/ Return the local SDK state snapshot, including defaults and installed versions."}, s.state)
+	sdkmcp.AddTool(server, &sdkmcp.Tool{Name: "sdk_check_updates", Description: "检查已安装工具是否有更新的正式稳定版本。/ Check whether installed tools have newer stable official releases."}, s.checkUpdates)
 
-	server.AddResource(serverResource("sdk://state", "SDK state", "Current SDK state", "application/json"), s.resourceState)
-	server.AddResource(serverResource("sdk://current", "Current versions", "Currently selected SDK versions", "application/json"), s.resourceCurrent)
-	server.AddResource(serverResource("sdk://doctor", "Doctor report", "SDK health report", "application/json"), s.resourceDoctor)
-	server.AddResource(serverResource("sdk://project/.sdk-version", "Project versions", "Nearest project version file", "application/json"), s.resourceProject)
+	server.AddResource(serverResource("sdk://state", "SDK 状态 / SDK state", "当前 SDK 状态 / Current SDK state", "application/json"), s.resourceState)
+	server.AddResource(serverResource("sdk://current", "当前版本 / Current versions", "当前正在使用的工具版本 / Currently active SDK versions", "application/json"), s.resourceCurrent)
+	server.AddResource(serverResource("sdk://doctor", "健康检查 / Doctor report", "SDK 安装和环境健康报告 / SDK installation and environment health report", "application/json"), s.resourceDoctor)
+	server.AddResource(serverResource("sdk://project/.sdk-version", "项目版本 / Project versions", "最近的 .sdk-version 项目版本配置 / Nearest project .sdk-version configuration", "application/json"), s.resourceProject)
 
 	return server
 }
@@ -79,7 +79,7 @@ func parseTool(value *string) (*model.Tool, error) {
 	}
 	tool := model.Tool(*value)
 	if !tool.Valid() {
-		return nil, fmt.Errorf("unsupported tool %q; supported: java, nodejs, maven, go", *value)
+		return nil, fmt.Errorf("不支持的工具 %q / unsupported tool; 支持的工具 / supported tools: java, nodejs, maven, go", *value)
 	}
 	return &tool, nil
 }
@@ -102,7 +102,7 @@ func (s *Server) availableVersions(ctx context.Context, _ *sdkmcp.CallToolReques
 	tool, err := parseTool(in.Tool)
 	if err != nil || tool == nil {
 		if err == nil {
-			err = fmt.Errorf("tool is required")
+			err = fmt.Errorf("必须提供工具名称 / tool is required")
 		}
 		return nil, availableOutput{}, err
 	}
@@ -114,7 +114,7 @@ func (s *Server) path(ctx context.Context, _ *sdkmcp.CallToolRequest, in toolInp
 	tool, err := parseTool(in.Tool)
 	if err != nil || tool == nil {
 		if err == nil {
-			err = fmt.Errorf("tool is required")
+			err = fmt.Errorf("必须提供工具名称 / tool is required")
 		}
 		return nil, pathOutput{}, err
 	}

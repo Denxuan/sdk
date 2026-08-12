@@ -30,6 +30,11 @@ func TestProtocolServerExposesReadOnlyTools(t *testing.T) {
 	if len(result.Tools) < 8 {
 		t.Fatalf("expected at least 8 tools, got %d", len(result.Tools))
 	}
+	for _, tool := range result.Tools {
+		if tool.Description == "" {
+			t.Fatalf("tool %q has no description", tool.Name)
+		}
+	}
 	call, err := clientSession.CallTool(ctx, &sdkmcp.CallToolParams{Name: "sdk_current_versions"})
 	if err != nil {
 		t.Fatal(err)
