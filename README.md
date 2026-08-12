@@ -45,6 +45,16 @@ SDK_HOME=/tmp/sdk ./sdk list
 
 ## 当前边界
 
+## MCP 集成
+
+SDK 提供只读的 Model Context Protocol 服务，方便 AI 客户端查询本机开发环境：
+
+```bash
+sdk mcp serve
+```
+
+服务使用 stdio 传输，支持列出已安装版本、当前版本、远程稳定版本、工具路径、项目版本、doctor、更新检查，以及 `sdk://state`、`sdk://current`、`sdk://doctor` 和 `sdk://project/.sdk-version` 资源。将 `sdk mcp serve` 配置为 MCP 客户端的 command 即可连接；当前阶段不会通过 MCP 修改或删除本机安装。
+
 ## 命令约定
 
 | 命令 | 作用 |

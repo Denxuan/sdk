@@ -27,6 +27,7 @@ Usage:
   sdk project set <tool> <version>     Set a version in .sdk-version in the current directory
   sdk project list                     Show the nearest .sdk-version file
   sdk setup zsh                        Add sdk initialization to ~/.zshrc
+  sdk mcp serve                        Run the MCP server over stdio
   sdk selfupdate [version]             Update sdk from a GitHub Release
   sdk version                          Print the sdk version
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Denxuan/sdk/internal/buildinfo"
+	mcpserver "github.com/Denxuan/sdk/internal/mcp"
 	"github.com/Denxuan/sdk/internal/model"
 	"github.com/Denxuan/sdk/internal/store"
 )
@@ -59,6 +60,11 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		return update(ctx, stateStore, args[1:], out)
 	case "remote", "available":
 		return remote(ctx, stateStore, args[1:], out)
+	case "mcp":
+		if len(args) != 2 || args[1] != "serve" {
+			return fmt.Errorf("usage: sdk mcp serve")
+		}
+		return mcpserver.NewServer(home).Run(ctx)
 	default:
 		return fmt.Errorf("unknown command %q (run sdk help)", args[0])
 	}
