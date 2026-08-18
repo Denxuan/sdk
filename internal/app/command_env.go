@@ -127,6 +127,8 @@ func environmentVariables(tool model.Tool, currentPath string) []environmentVari
 		return []environmentVariable{{name: "JAVA_HOME", value: currentPath}}
 	case model.Maven:
 		return []environmentVariable{{name: "MAVEN_HOME", value: currentPath}, {name: "M2_HOME", value: currentPath}}
+	case model.MVND:
+		return []environmentVariable{{name: "MVND_HOME", value: currentPath}}
 	case model.Go:
 		return []environmentVariable{{name: "GOROOT", value: currentPath}}
 	case model.NodeJS:

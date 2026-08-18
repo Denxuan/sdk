@@ -52,3 +52,15 @@ func TestManifestChecksumFindsRequestedNodeArchive(t *testing.T) {
 		t.Fatalf("manifest checksum = %q, found = %t", checksum, found)
 	}
 }
+
+func TestMvndReleasePatternFindsStableDirectories(t *testing.T) {
+	index := `href="1.0.6/" href="1.0.6-RC1/" href="0.9.0/"`
+	matches := mvndReleasePattern.FindAllStringSubmatch(index, -1)
+	if len(matches) != 3 || matches[0][1] != "1.0.6" {
+		t.Fatalf("mvnd release matches = %#v", matches)
+	}
+	versions := stableVersions([]string{matches[0][1], matches[1][1], matches[2][1]})
+	if len(versions) != 2 || versions[0].Number != "1.0.6" {
+		t.Fatalf("mvnd stable versions = %#v", versions)
+	}
+}

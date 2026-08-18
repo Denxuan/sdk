@@ -34,6 +34,8 @@ func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]Version, erro
 		return c.javaVersions(ctx)
 	case model.Maven:
 		return c.mavenVersions(ctx)
+	case model.MVND:
+		return c.mvndVersions(ctx)
 	case model.Go:
 		return c.goVersions(ctx)
 	case model.NodeJS:
@@ -49,6 +51,8 @@ func (c *Client) Artifact(ctx context.Context, tool model.Tool, version string) 
 		return c.javaArtifact(ctx, version)
 	case model.Maven:
 		return c.mavenArtifact(ctx, version)
+	case model.MVND:
+		return c.mvndArtifact(ctx, version)
 	case model.Go:
 		return c.goArtifact(ctx, version)
 	case model.NodeJS:

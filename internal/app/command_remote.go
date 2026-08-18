@@ -76,6 +76,8 @@ func toolDisplayName(tool model.Tool) string {
 		return "Node.js"
 	case model.Maven:
 		return "Maven"
+	case model.MVND:
+		return "Maven mvnd"
 	case model.Go:
 		return "Go"
 	default:

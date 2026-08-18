@@ -2,12 +2,13 @@
 
 ## 当前版本
 
-`sdk` 是一个面向 Java、Maven、Go 和 Node.js 的开发工具版本管理命令行程序。
+`sdk` 是一个面向 Java、Maven、Maven mvnd、Go 和 Node.js 的开发工具版本管理命令行程序。
 
 ## 未发布
 
 - 新增 `sdk mcp serve`，通过官方 Go MCP SDK 以 stdio 提供只读工具和资源。
 - MCP 工具、参数、资源和错误提示增加中英文描述，中文 AI 客户端可以直接理解工具用途。
+- 新增独立的 `mvnd` 工具，支持 Maven mvnd 的远程版本查询、安装、切换、卸载、更新和项目版本管理。
 - 抽取共享只读服务层，供 CLI 与 MCP 查询已安装版本、当前版本、远程版本、路径、项目版本、doctor 和更新检查。
 - 新增 MCP 服务协议测试和共享服务测试。
 
@@ -15,7 +16,7 @@
 
 ### 工具与版本查询
 
-- 支持 Java、Maven、Go、Node.js 四种工具。
+- 支持 Java、Maven、Maven mvnd、Go、Node.js 五种工具。
 - `sdk remote <tool>` / `sdk available <tool>`：从官方源列出可用正式版本。
 - 自动过滤 Alpha、Beta、RC、Milestone、Snapshot、EA 等预发布版本。
 - Java 显示每个功能版本线的最新正式 Temurin 版本，例如 `25.0.4`。
@@ -79,6 +80,7 @@
 └── tools/
     ├── java/<version>/
     ├── maven/<version>/
+    ├── mvnd/<version>/
     ├── go/<version>/
     └── nodejs/<version>/
 ```

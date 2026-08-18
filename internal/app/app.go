@@ -84,7 +84,7 @@ func resolveHome() (string, error) {
 func parseTool(value string) (model.Tool, error) {
 	tool := model.Tool(strings.ToLower(value))
 	if !tool.Valid() {
-		return "", fmt.Errorf("unsupported tool %q; supported: java, nodejs, maven, go", value)
+		return "", fmt.Errorf("unsupported tool %q; supported: java, nodejs, maven, mvnd, go", value)
 	}
 	return tool, nil
 }

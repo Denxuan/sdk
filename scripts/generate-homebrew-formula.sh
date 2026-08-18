@@ -45,7 +45,7 @@ linux_arm64="$(checksum_for "sdk_${VERSION}_linux_arm64.tar.gz")"
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 cat > "$OUTPUT_FILE" <<EOF
 class Sdk < Formula
-  desc "Development tool version manager for Java, Maven, Go, and Node.js"
+  desc "Development tool version manager for Java, Maven, Maven mvnd, Go, and Node.js"
   homepage "https://github.com/$REPOSITORY"
   version "$VERSION"
 
