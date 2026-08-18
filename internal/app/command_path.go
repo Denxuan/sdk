@@ -16,7 +16,7 @@ func printToolPath(stateStore *store.Store, args []string, out io.Writer) error 
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(out, stateStore.CurrentPath(tool))
+	_, _ = fmt.Fprintln(out, stateStore.CurrentPath(tool))
 	return nil
 }
 
@@ -33,7 +33,7 @@ func printToolExecutable(stateStore *store.Store, args []string, out io.Writer) 
 	if info.IsDir() || info.Mode()&0111 == 0 {
 		return fmt.Errorf("current %s executable is not executable: %s", tool, executable)
 	}
-	fmt.Fprintln(out, executable)
+	_, _ = fmt.Fprintln(out, executable)
 	return nil
 }
 

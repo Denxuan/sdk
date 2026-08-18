@@ -32,7 +32,7 @@ func printEnvironment(stateStore *store.Store, args []string, out io.Writer) err
 			continue
 		}
 		for _, variable := range environmentVariables(tool, target.Path) {
-			fmt.Fprintf(out, "export %s=%q\n", variable.name, variable.value)
+			_, _ = fmt.Fprintf(out, "export %s=%q\n", variable.name, variable.value)
 		}
 		pathEntries = append(pathEntries, filepath.Join(target.Path, "bin"))
 		if tool == model.Go {
@@ -40,7 +40,7 @@ func printEnvironment(stateStore *store.Store, args []string, out io.Writer) err
 		}
 	}
 	if len(pathEntries) > 0 {
-		fmt.Fprintf(out, "export PATH=%q:$PATH\n", strings.Join(pathEntries, ":"))
+		_, _ = fmt.Fprintf(out, "export PATH=%q:$PATH\n", strings.Join(pathEntries, ":"))
 	}
 	return nil
 }

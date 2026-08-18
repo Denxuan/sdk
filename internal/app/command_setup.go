@@ -41,9 +41,9 @@ func setupShell(stateStore *store.Store, args []string, out io.Writer) error {
 	if err := addZshInitialization(configPath, sdkHome); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "Created sdk shell script at %s\n", initPath)
-	fmt.Fprintf(out, "Added sdk initialization to %s\n", configPath)
-	fmt.Fprintf(out, "Run: source %s\n", configPath)
+	_, _ = fmt.Fprintf(out, "Created sdk shell script at %s\n", initPath)
+	_, _ = fmt.Fprintf(out, "Added sdk initialization to %s\n", configPath)
+	_, _ = fmt.Fprintf(out, "Run: source %s\n", configPath)
 	return nil
 }
 

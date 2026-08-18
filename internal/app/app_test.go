@@ -23,7 +23,7 @@ func TestInstallUseListAndRemove(t *testing.T) {
 	}
 	run := func(args ...string) (string, error) {
 		var out bytes.Buffer
-		err := Run(context.Background(), args, &out, &bytes.Buffer{})
+		err := Run(context.Background(), args, &out)
 		return out.String(), err
 	}
 	if _, err := run("install", "go", "1.26.4", "--path", installPath); err != nil {

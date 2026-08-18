@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	if err := app.Run(context.Background(), os.Args[1:], os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+	if err := app.Run(context.Background(), os.Args[1:], os.Stdout); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }

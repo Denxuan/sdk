@@ -6,7 +6,7 @@ import (
 )
 
 func usage(out io.Writer) {
-	fmt.Fprint(out, `sdk - developer tool version manager
+	_, _ = fmt.Fprint(out, `sdk - developer tool version manager
 
 Usage:
   sdk remote <tool>                    List official remote versions

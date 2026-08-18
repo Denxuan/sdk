@@ -39,19 +39,19 @@ func list(stateStore *store.Store, args []string, out io.Writer) error {
 }
 
 func printInstalledVersions(out io.Writer, tool model.Tool, installed []model.InstalledVersion, defaultVersion string) {
-	fmt.Fprintf(out, "%s", tool)
+	_, _ = fmt.Fprintf(out, "%s", tool)
 	if len(installed) == 0 {
-		fmt.Fprintln(out, ": no installed versions")
+		_, _ = fmt.Fprintln(out, ": no installed versions")
 		return
 	}
-	fmt.Fprintln(out, ":")
+	_, _ = fmt.Fprintln(out, ":")
 	sort.Slice(installed, func(i, j int) bool { return installed[i].Version > installed[j].Version })
 	for _, item := range installed {
 		marker := " "
 		if item.Version == defaultVersion {
 			marker = "*"
 		}
-		fmt.Fprintf(out, "  %s %s  %s\n", marker, item.Version, item.Path)
+		_, _ = fmt.Fprintf(out, "  %s %s  %s\n", marker, item.Version, item.Path)
 	}
 }
 
@@ -72,7 +72,7 @@ func current(stateStore *store.Store, args []string, out io.Writer) error {
 		return err
 	}
 	if version := state.Defaults[tool]; version != "" {
-		fmt.Fprintln(out, version)
+		_, _ = fmt.Fprintln(out, version)
 		return nil
 	}
 	return fmt.Errorf("no default %s version is set", tool)
@@ -88,11 +88,11 @@ func printCurrentVersions(out io.Writer, state model.State) {
 		if version == "" {
 			version = "not set"
 		}
-		fmt.Fprintf(out, "%s: %s\n", tool, version)
+		_, _ = fmt.Fprintf(out, "%s: %s\n", tool, version)
 		found = true
 	}
 	if !found {
-		fmt.Fprintln(out, "no tools are installed")
+		_, _ = fmt.Fprintln(out, "no tools are installed")
 	}
 }
 
@@ -126,7 +126,7 @@ func setDefault(ctx context.Context, stateStore *store.Store, args []string, out
 	if err := stateStore.SetCurrent(tool, installation.Path); err != nil {
 		return fmt.Errorf("update current %s link: %w", tool, err)
 	}
-	fmt.Fprintf(out, "default %s set to %s\n", tool, args[1])
+	_, _ = fmt.Fprintf(out, "default %s set to %s\n", tool, args[1])
 	if hasPreviousInstallation && previousVersion != args[1] && supportsConfigurationMigration(tool) {
 		migrate, err := askToMigrateConfiguration(out, in, tool, previousVersion, args[1])
 		if err != nil {
@@ -144,7 +144,7 @@ func supportsConfigurationMigration(tool model.Tool) bool {
 }
 
 func askToMigrateConfiguration(out io.Writer, in io.Reader, tool model.Tool, fromVersion, toVersion string) (bool, error) {
-	fmt.Fprintf(out, "Migrate %s configuration from %s to %s? [y/N]: ", tool, fromVersion, toVersion)
+	_, _ = fmt.Fprintf(out, "Migrate %s configuration from %s to %s? [y/N]: ", tool, fromVersion, toVersion)
 	answer, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && len(answer) == 0 {
 		if errors.Is(err, io.EOF) {
@@ -184,7 +184,7 @@ func uninstall(stateStore *store.Store, args []string, out io.Writer) error {
 	if err := stateStore.Save(state); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "uninstalled %s %s\n", tool, version)
+	_, _ = fmt.Fprintf(out, "uninstalled %s %s\n", tool, version)
 	return nil
 }
 

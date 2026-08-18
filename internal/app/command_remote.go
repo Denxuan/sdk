@@ -37,21 +37,21 @@ func remote(ctx context.Context, stateStore *store.Store, args []string, out io.
 func formatRemoteVersions(out io.Writer, tool model.Tool, versions []catalog.Version, state model.State) {
 	printRemoteHeader(out, tool)
 	for index, version := range versions {
-		fmt.Fprintf(out, "%-*s", remoteColumnWidth, remoteVersionLabel(tool, version, state))
+		_, _ = fmt.Fprintf(out, "%-*s", remoteColumnWidth, remoteVersionLabel(tool, version, state))
 		if (index+1)%4 == 0 || index+1 == len(versions) {
-			fmt.Fprintln(out)
+			_, _ = fmt.Fprintln(out)
 		}
 	}
-	fmt.Fprintln(out, strings.Repeat("=", 80))
-	fmt.Fprintln(out, "* - installed")
-	fmt.Fprintln(out, "> - currently in use")
-	fmt.Fprintln(out, strings.Repeat("=", 80))
+	_, _ = fmt.Fprintln(out, strings.Repeat("=", 80))
+	_, _ = fmt.Fprintln(out, "* - installed")
+	_, _ = fmt.Fprintln(out, "> - currently in use")
+	_, _ = fmt.Fprintln(out, strings.Repeat("=", 80))
 }
 
 func printRemoteHeader(out io.Writer, tool model.Tool) {
-	fmt.Fprintln(out, strings.Repeat("=", 80))
-	fmt.Fprintf(out, "Available %s Versions\n", toolDisplayName(tool))
-	fmt.Fprintln(out, strings.Repeat("=", 80))
+	_, _ = fmt.Fprintln(out, strings.Repeat("=", 80))
+	_, _ = fmt.Fprintf(out, "Available %s Versions\n", toolDisplayName(tool))
+	_, _ = fmt.Fprintln(out, strings.Repeat("=", 80))
 }
 
 func remoteVersionLabel(tool model.Tool, version catalog.Version, state model.State) string {

@@ -23,30 +23,30 @@ func (p *downloadProgress) Update(progress installer.Progress) {
 	p.active = true
 	if progress.Total > 0 {
 		percent := progress.Downloaded * 100 / progress.Total
-		fmt.Fprintf(p.out, "\rDownloading %s %s: %3d%% (%s / %s)", p.tool, p.version, percent, formatBytes(progress.Downloaded), formatBytes(progress.Total))
+		_, _ = fmt.Fprintf(p.out, "\rDownloading %s %s: %3d%% (%s / %s)", p.tool, p.version, percent, formatBytes(progress.Downloaded), formatBytes(progress.Total))
 		return
 	}
-	fmt.Fprintf(p.out, "\rDownloading %s %s: %s", p.tool, p.version, formatBytes(progress.Downloaded))
+	_, _ = fmt.Fprintf(p.out, "\rDownloading %s %s: %s", p.tool, p.version, formatBytes(progress.Downloaded))
 }
 
 func (p *downloadProgress) Finish() {
 	if p.active {
-		fmt.Fprintln(p.out)
+		_, _ = fmt.Fprintln(p.out)
 	}
 }
 
 func (p *downloadProgress) Retry(attempt, total int, err error) {
 	if p.active {
-		fmt.Fprintln(p.out)
+		_, _ = fmt.Fprintln(p.out)
 	}
-	fmt.Fprintf(p.out, "Download interrupted; retrying %s %s (%d/%d): %v\n", p.tool, p.version, attempt, total, err)
+	_, _ = fmt.Fprintf(p.out, "Download interrupted; retrying %s %s (%d/%d): %v\n", p.tool, p.version, attempt, total, err)
 }
 
 func (p *downloadProgress) Verify(checksum installer.Checksum) {
 	if p.active {
-		fmt.Fprintln(p.out)
+		_, _ = fmt.Fprintln(p.out)
 	}
-	fmt.Fprintf(p.out, "Verifying %s checksum for %s %s...\n", checksum.Algorithm, p.tool, p.version)
+	_, _ = fmt.Fprintf(p.out, "Verifying %s checksum for %s %s...\n", checksum.Algorithm, p.tool, p.version)
 }
 
 func formatBytes(bytes int64) string {

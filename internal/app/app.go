@@ -14,7 +14,7 @@ import (
 	"github.com/Denxuan/sdk/internal/store"
 )
 
-func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
+func Run(ctx context.Context, args []string, out io.Writer) error {
 	if len(args) == 0 {
 		usage(out)
 		return nil
@@ -30,7 +30,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		usage(out)
 		return nil
 	case "version":
-		fmt.Fprintf(out, "sdk %s\n", buildinfo.Version)
+		_, _ = fmt.Fprintf(out, "sdk %s\n", buildinfo.Version)
 		return nil
 	case "selfupdate":
 		return selfUpdate(ctx, args[1:], out)

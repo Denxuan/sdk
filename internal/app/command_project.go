@@ -67,7 +67,7 @@ func initializeProject(stateStore *store.Store, out io.Writer) error {
 	if err := writeProjectVersions(path, versions); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "created %s\n", path)
+	_, _ = fmt.Fprintf(out, "created %s\n", path)
 	return nil
 }
 
@@ -98,7 +98,7 @@ func setProjectVersion(stateStore *store.Store, toolName, version string, out io
 	if err := writeProjectVersions(path, versions); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "set %s %s in %s\n", tool, version, path)
+	_, _ = fmt.Fprintf(out, "set %s %s in %s\n", tool, version, path)
 	return nil
 }
 
@@ -110,10 +110,10 @@ func listProjectVersions(out io.Writer) error {
 	if !found {
 		return fmt.Errorf("no %s found in this directory or its parents", projectVersionFile)
 	}
-	fmt.Fprintln(out, path)
+	_, _ = fmt.Fprintln(out, path)
 	for _, tool := range model.Tools() {
 		if version := versions[tool]; version != "" {
-			fmt.Fprintf(out, "%s=%s\n", tool, version)
+			_, _ = fmt.Fprintf(out, "%s=%s\n", tool, version)
 		}
 	}
 	return nil

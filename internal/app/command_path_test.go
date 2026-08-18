@@ -37,7 +37,7 @@ func TestPathAndWhichUseCurrentToolLink(t *testing.T) {
 
 	run := func(args ...string) (string, error) {
 		var out bytes.Buffer
-		err := Run(context.Background(), args, &out, &bytes.Buffer{})
+		err := Run(context.Background(), args, &out)
 		return strings.TrimSpace(out.String()), err
 	}
 	currentPath := filepath.Join(home, "tools", "go", "current")
@@ -57,7 +57,7 @@ func TestPathRejectsToolWithoutDefault(t *testing.T) {
 	}
 	t.Setenv("SDK_HOME", home)
 	var out bytes.Buffer
-	err := Run(context.Background(), []string{"path", "go"}, &out, &bytes.Buffer{})
+	err := Run(context.Background(), []string{"path", "go"}, &out)
 	if err == nil || !strings.Contains(err.Error(), "no default go version") {
 		t.Fatalf("sdk path go error = %v", err)
 	}

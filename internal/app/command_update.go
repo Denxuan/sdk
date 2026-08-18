@@ -25,7 +25,7 @@ func update(ctx context.Context, stateStore *store.Store, args []string, out io.
 		return err
 	}
 	if len(targets) == 0 {
-		fmt.Fprintln(out, "no managed tools to update")
+		_, _ = fmt.Fprintln(out, "no managed tools to update")
 		return nil
 	}
 
@@ -94,11 +94,11 @@ func updateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, o
 		return err
 	}
 	if hasVersion(state.Installed[tool], version) {
-		fmt.Fprintf(out, "%s is already up to date (%s)\n", tool, version)
+		_, _ = fmt.Fprintf(out, "%s is already up to date (%s)\n", tool, version)
 		return nil
 	}
 	previousVersions := state.Installed[tool]
-	fmt.Fprintf(out, "updating %s to %s\n", tool, version)
+	_, _ = fmt.Fprintf(out, "updating %s to %s\n", tool, version)
 	if err := install(ctx, stateStore, []string{string(tool), version}, out); err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func checkUpdateTool(ctx context.Context, stateStore *store.Store, tool model.To
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(out, describeUpdateCheck(tool, state.Installed[tool], state.Defaults[tool], latest))
+	_, _ = fmt.Fprintln(out, describeUpdateCheck(tool, state.Installed[tool], state.Defaults[tool], latest))
 	return nil
 }
 
@@ -151,7 +151,7 @@ func offerOldVersionCleanup(stateStore *store.Store, tool model.Tool, newVersion
 	for _, item := range candidates {
 		versions = append(versions, item.Version)
 	}
-	fmt.Fprintf(out, "Remove old %s versions (%s)? [y/N]: ", tool, strings.Join(versions, ", "))
+	_, _ = fmt.Fprintf(out, "Remove old %s versions (%s)? [y/N]: ", tool, strings.Join(versions, ", "))
 	answer, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && len(answer) == 0 {
 		if errors.Is(err, io.EOF) {
@@ -173,7 +173,7 @@ func offerOldVersionCleanup(stateStore *store.Store, tool model.Tool, newVersion
 	if err := stateStore.Save(state); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "removed old %s versions: %s\n", tool, strings.Join(versions, ", "))
+	_, _ = fmt.Fprintf(out, "removed old %s versions: %s\n", tool, strings.Join(versions, ", "))
 	return nil
 }
 

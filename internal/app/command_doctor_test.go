@@ -40,7 +40,7 @@ func TestDoctorReportsHealthyCurrentInstallation(t *testing.T) {
 	t.Setenv("PATH", currentBin)
 	t.Setenv("GOROOT", filepath.Join(home, "tools", "go", "current"))
 	var out bytes.Buffer
-	if err := Run(context.Background(), []string{"doctor"}, &out, &bytes.Buffer{}); err != nil {
+	if err := Run(context.Background(), []string{"doctor"}, &out); err != nil {
 		t.Fatalf("doctor failed: %v\n%s", err, out.String())
 	}
 	for _, expected := range []string{"[OK]   go current", "[OK]   go executable go", "[OK]   go PATH", "[OK]   GOROOT", "0 error(s)"} {
@@ -74,7 +74,7 @@ func TestDoctorFailsForBrokenCurrentLink(t *testing.T) {
 
 	t.Setenv("SDK_HOME", home)
 	var out bytes.Buffer
-	if err := Run(context.Background(), []string{"doctor"}, &out, &bytes.Buffer{}); err == nil {
+	if err := Run(context.Background(), []string{"doctor"}, &out); err == nil {
 		t.Fatalf("doctor unexpectedly succeeded:\n%s", out.String())
 	}
 	if !strings.Contains(out.String(), "broken link") {

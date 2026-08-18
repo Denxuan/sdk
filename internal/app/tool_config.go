@@ -24,9 +24,9 @@ func migrateToolConfiguration(ctx context.Context, tool model.Tool, sourcePath, 
 			filepath.Join("conf", "toolchains.xml"),
 		})
 	case model.Go:
-		fmt.Fprintln(out, "Go configuration is user-global and does not need migration.")
+		_, _ = fmt.Fprintln(out, "Go configuration is user-global and does not need migration.")
 	case model.Java:
-		fmt.Fprintln(out, "Java truststore was kept from the new JDK; custom certificates are not overwritten automatically.")
+		_, _ = fmt.Fprintln(out, "Java truststore was kept from the new JDK; custom certificates are not overwritten automatically.")
 	}
 }
 
@@ -40,36 +40,36 @@ func migrateFiles(out io.Writer, sourcePath, destinationPath string, relativePat
 			continue
 		}
 		if err != nil {
-			fmt.Fprintf(out, "Warning: could not read configuration %s: %v\n", source, err)
+			_, _ = fmt.Fprintf(out, "Warning: could not read configuration %s: %v\n", source, err)
 			continue
 		}
 		if _, err := os.Stat(destination); err == nil {
 			backup := destination + ".sdk-default"
 			if _, backupErr := os.Stat(backup); backupErr == nil {
-				fmt.Fprintf(out, "Warning: skipped %s because backup already exists: %s\n", relativePath, backup)
+				_, _ = fmt.Fprintf(out, "Warning: skipped %s because backup already exists: %s\n", relativePath, backup)
 				continue
 			}
 			if err := os.Rename(destination, backup); err != nil {
-				fmt.Fprintf(out, "Warning: could not preserve new default %s: %v\n", relativePath, err)
+				_, _ = fmt.Fprintf(out, "Warning: could not preserve new default %s: %v\n", relativePath, err)
 				continue
 			}
 		} else if !os.IsNotExist(err) {
-			fmt.Fprintf(out, "Warning: could not inspect destination %s: %v\n", destination, err)
+			_, _ = fmt.Fprintf(out, "Warning: could not inspect destination %s: %v\n", destination, err)
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
-			fmt.Fprintf(out, "Warning: could not create configuration directory for %s: %v\n", relativePath, err)
+			_, _ = fmt.Fprintf(out, "Warning: could not create configuration directory for %s: %v\n", relativePath, err)
 			continue
 		}
 		if err := os.WriteFile(destination, data, 0644); err != nil {
-			fmt.Fprintf(out, "Warning: could not migrate %s: %v\n", relativePath, err)
+			_, _ = fmt.Fprintf(out, "Warning: could not migrate %s: %v\n", relativePath, err)
 			continue
 		}
-		fmt.Fprintf(out, "Migrated Maven configuration %s\n", relativePath)
+		_, _ = fmt.Fprintf(out, "Migrated Maven configuration %s\n", relativePath)
 		migrated++
 	}
 	if migrated == 0 {
-		fmt.Fprintln(out, "No Maven version-local configuration to migrate.")
+		_, _ = fmt.Fprintln(out, "No Maven version-local configuration to migrate.")
 	}
 }
 
@@ -83,23 +83,23 @@ func migrateNodeGlobalPackages(ctx context.Context, sourcePath, destinationPath 
 	destinationNPM := filepath.Join(destinationPath, "bin", "npm")
 	packages, err := listNPMGlobalPackages(ctx, sourceNPM)
 	if err != nil {
-		fmt.Fprintf(out, "Warning: could not list global npm packages from %s: %v\n", sourceNPM, err)
+		_, _ = fmt.Fprintf(out, "Warning: could not list global npm packages from %s: %v\n", sourceNPM, err)
 		return
 	}
 	if len(packages) == 0 {
-		fmt.Fprintln(out, "No third-party global npm packages to migrate.")
+		_, _ = fmt.Fprintln(out, "No third-party global npm packages to migrate.")
 		return
 	}
-	fmt.Fprintf(out, "Migrating %d global npm package(s)...\n", len(packages))
+	_, _ = fmt.Fprintf(out, "Migrating %d global npm package(s)...\n", len(packages))
 	for _, pkg := range packages {
 		spec := npmPackageSpec(pkg)
 		command := exec.CommandContext(ctx, destinationNPM, "install", "--global", spec)
 		output, err := command.CombinedOutput()
 		if err != nil {
-			fmt.Fprintf(out, "Warning: could not migrate %s: %v\n", spec, commandError(err, output))
+			_, _ = fmt.Fprintf(out, "Warning: could not migrate %s: %v\n", spec, commandError(err, output))
 			continue
 		}
-		fmt.Fprintf(out, "Migrated %s\n", spec)
+		_, _ = fmt.Fprintf(out, "Migrated %s\n", spec)
 	}
 }
 

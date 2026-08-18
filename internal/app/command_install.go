@@ -34,7 +34,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "selected %s %s\n", tool, version)
+		_, _ = fmt.Fprintf(out, "selected %s %s\n", tool, version)
 	}
 	state, err := stateStore.Load()
 	if err != nil {
@@ -76,7 +76,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		}
 		return err
 	}
-	fmt.Fprintf(out, "installed %s %s at %s\n", tool, version, installPath)
+	_, _ = fmt.Fprintf(out, "installed %s %s at %s\n", tool, version, installPath)
 	if managed {
 		setAsDefault, err := askToSetDefault(out, os.Stdin, tool, version)
 		if err != nil {
@@ -90,7 +90,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 }
 
 func askToSetDefault(out io.Writer, in io.Reader, tool model.Tool, version string) (bool, error) {
-	fmt.Fprintf(out, "Set %s %s as default? [y/N]: ", tool, version)
+	_, _ = fmt.Fprintf(out, "Set %s %s as default? [y/N]: ", tool, version)
 	answer, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && len(answer) == 0 {
 		if errors.Is(err, io.EOF) {

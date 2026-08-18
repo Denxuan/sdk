@@ -18,7 +18,7 @@ func doctor(stateStore *store.Store, args []string, out io.Writer) error {
 	}
 
 	report := &doctorReport{out: out}
-	fmt.Fprintln(out, "SDK doctor")
+	_, _ = fmt.Fprintln(out, "SDK doctor")
 	report.checkDirectory("SDK home", stateStore.Home)
 
 	state, err := stateStore.Load()
@@ -182,17 +182,17 @@ type doctorReport struct {
 
 func (r *doctorReport) ok(name, detail string) {
 	r.passed++
-	fmt.Fprintf(r.out, "[OK]   %s: %s\n", name, detail)
+	_, _ = fmt.Fprintf(r.out, "[OK]   %s: %s\n", name, detail)
 }
 
 func (r *doctorReport) warn(name, detail string) {
 	r.warnings++
-	fmt.Fprintf(r.out, "[WARN] %s: %s\n", name, detail)
+	_, _ = fmt.Fprintf(r.out, "[WARN] %s: %s\n", name, detail)
 }
 
 func (r *doctorReport) error(name, detail string) {
 	r.errors++
-	fmt.Fprintf(r.out, "[FAIL] %s: %s\n", name, detail)
+	_, _ = fmt.Fprintf(r.out, "[FAIL] %s: %s\n", name, detail)
 }
 
 func (r *doctorReport) checkDirectory(name, path string) {
@@ -209,7 +209,7 @@ func (r *doctorReport) checkDirectory(name, path string) {
 }
 
 func (r *doctorReport) summary() {
-	fmt.Fprintf(r.out, "Summary: %d passed, %d warning(s), %d error(s)\n", r.passed, r.warnings, r.errors)
+	_, _ = fmt.Fprintf(r.out, "Summary: %d passed, %d warning(s), %d error(s)\n", r.passed, r.warnings, r.errors)
 }
 
 func (r *doctorReport) result() error {

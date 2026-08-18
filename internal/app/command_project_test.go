@@ -57,7 +57,7 @@ func TestProjectEnvironmentOverridesGlobalDefaultFromParentDirectory(t *testing.
 	t.Setenv("SDK_HOME", home)
 
 	var out bytes.Buffer
-	if err := Run(context.Background(), []string{"env", "--project"}, &out, &bytes.Buffer{}); err != nil {
+	if err := Run(context.Background(), []string{"env", "--project"}, &out); err != nil {
 		t.Fatalf("sdk env --project failed: %v", err)
 	}
 	if !strings.Contains(out.String(), "export GOROOT=\""+projectPath+"\"") {
@@ -92,7 +92,7 @@ func TestSetProjectVersionCreatesProjectFile(t *testing.T) {
 	t.Setenv("SDK_HOME", home)
 
 	var out bytes.Buffer
-	if err := Run(context.Background(), []string{"project", "set", "java", "21.0.12"}, &out, &bytes.Buffer{}); err != nil {
+	if err := Run(context.Background(), []string{"project", "set", "java", "21.0.12"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	contents, err := os.ReadFile(filepath.Join(directory, projectVersionFile))
