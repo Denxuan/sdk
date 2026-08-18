@@ -64,3 +64,20 @@ func TestMvndReleasePatternFindsStableDirectories(t *testing.T) {
 		t.Fatalf("mvnd stable versions = %#v", versions)
 	}
 }
+
+func TestGradleReleasesIgnorePreviewBuilds(t *testing.T) {
+	releases := []gradleRelease{
+		{Version: "9.0.0", Final: true, DownloadURL: "https://example.test/gradle-9.0.0-bin.zip", Checksum: "abc"},
+		{Version: "9.1.0-rc-1", Final: false, DownloadURL: "https://example.test/rc.zip", Checksum: "def"},
+		{Version: "9.2.0-20260818000000+0000", Final: false, Snapshot: true},
+	}
+	versions := make([]string, 0, len(releases))
+	for _, release := range releases {
+		if release.Final && !release.Snapshot && !release.Nightly {
+			versions = append(versions, release.Version)
+		}
+	}
+	if got := stableVersions(versions); len(got) != 1 || got[0].Number != "9.0.0" {
+		t.Fatalf("gradle stable versions = %#v", got)
+	}
+}

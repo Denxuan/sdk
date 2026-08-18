@@ -171,7 +171,7 @@ func (s *ReadService) ToolExecutables(ctx context.Context, tool model.Tool) (map
 	if err != nil {
 		return nil, err
 	}
-	names := map[model.Tool][]string{model.Java: {"java"}, model.Maven: {"mvn"}, model.MVND: {"mvnd"}, model.Go: {"go"}, model.NodeJS: {"node", "npm", "npx"}}[tool]
+	names := map[model.Tool][]string{model.Java: {"java"}, model.Maven: {"mvn"}, model.MVND: {"mvnd"}, model.Gradle: {"gradle"}, model.Go: {"go"}, model.NodeJS: {"node", "npm", "npx"}}[tool]
 	result := make(map[string]string, len(names))
 	for _, name := range names {
 		executable := filepath.Join(path, "bin", name)

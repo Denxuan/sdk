@@ -78,6 +78,8 @@ func toolDisplayName(tool model.Tool) string {
 		return "Maven"
 	case model.MVND:
 		return "Maven mvnd"
+	case model.Gradle:
+		return "Gradle"
 	case model.Go:
 		return "Go"
 	default:

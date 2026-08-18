@@ -154,6 +154,8 @@ func executableNames(tool model.Tool) []string {
 		return []string{"mvn"}
 	case model.MVND:
 		return []string{"mvnd"}
+	case model.Gradle:
+		return []string{"gradle"}
 	case model.Go:
 		return []string{"go"}
 	case model.NodeJS:

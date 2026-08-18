@@ -31,7 +31,7 @@ Usage:
   sdk selfupdate [version]             Update sdk from a GitHub Release
   sdk version                          Print the sdk version
 
-Supported tools: java, nodejs, maven, mvnd, go
+Supported tools: java, nodejs, maven, mvnd, gradle, go
 State location: $SDK_HOME (or ~/.sdk)
 `)
 }
