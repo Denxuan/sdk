@@ -36,6 +36,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		}
 		_, _ = fmt.Fprintf(out, "selected %s %s\n", tool, version)
 	}
+	version = normalizeToolVersion(tool, version)
 	state, err := stateStore.Load()
 	if err != nil {
 		return err
@@ -89,6 +90,13 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 	return nil
 }
 
+func normalizeToolVersion(tool model.Tool, version string) string {
+	if tool == model.Java && !strings.Contains(version, "-") {
+		return version + "-tem"
+	}
+	return version
+}
+
 func askToSetDefault(out io.Writer, in io.Reader, tool model.Tool, version string) (bool, error) {
 	_, _ = fmt.Fprintf(out, "Set %s %s as default? [y/N]: ", tool, version)
 	answer, err := bufio.NewReader(in).ReadString('\n')
@@ -140,6 +148,11 @@ func recommendedVersion(ctx context.Context, tool model.Tool) (string, error) {
 }
 
 func preferredVersion(versions []catalog.Version) string {
+	for _, version := range versions {
+		if version.LTS && strings.HasSuffix(version.Number, "-tem") {
+			return version.Number
+		}
+	}
 	for _, version := range versions {
 		if version.LTS {
 			return version.Number

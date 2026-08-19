@@ -109,6 +109,9 @@ func setDefault(ctx context.Context, stateStore *store.Store, args []string, out
 		return err
 	}
 	if !hasVersion(state.Installed[tool], args[1]) {
+		args[1] = normalizeToolVersion(tool, args[1])
+	}
+	if !hasVersion(state.Installed[tool], args[1]) {
 		return fmt.Errorf("%s %s is not installed", tool, args[1])
 	}
 	previousVersion := state.Defaults[tool]

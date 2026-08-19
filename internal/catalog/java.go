@@ -13,6 +13,7 @@ import (
 )
 
 const adoptiumReleasesURL = "https://api.adoptium.net/v3/info/available_releases"
+const foojayZuluURL = "https://api.foojay.io/disco/v3.0/packages"
 
 func (c *Client) javaVersions(ctx context.Context) ([]Version, error) {
 	var response struct {
@@ -35,7 +36,63 @@ func (c *Client) javaVersions(ctx context.Context) ([]Version, error) {
 		if version == "" {
 			continue
 		}
-		versions = append(versions, Version{Number: version, LTS: ltsFeatures[release]})
+		versions = append(versions, Version{Number: version + "-tem", LTS: ltsFeatures[release]})
+	}
+	zulu, err := c.javaZuluVersions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return stableReleases(append(versions, zulu...)), nil
+}
+
+type zuluPackage struct {
+	ID             string `json:"id"`
+	JavaVersion    string `json:"java_version"`
+	TermOfSupport  string `json:"term_of_support"`
+	DirectDownload string `json:"direct_download_uri"`
+	PackageInfoURI string `json:"pkg_info_uri"`
+	Links          struct {
+		PackageInfo string `json:"pkg_info_uri"`
+	} `json:"links"`
+}
+
+func (c *Client) javaZuluPackages(ctx context.Context) ([]zuluPackage, error) {
+	osName, architecture, err := foojayPlatform()
+	if err != nil {
+		return nil, err
+	}
+	query := url.Values{
+		"distribution":     {"zulu"},
+		"architecture":     {architecture},
+		"operating_system": {osName},
+		"package_type":     {"jdk"},
+		"javafx_bundled":   {"true"},
+		"release_status":   {"ga"},
+		"archive_type":     {"zip"},
+		"latest":           {"available"},
+		"limit":            {"100"},
+	}
+	var response struct {
+		Result []zuluPackage `json:"result"`
+	}
+	if err := c.getJSON(ctx, foojayZuluURL+"?"+query.Encode(), &response); err != nil {
+		return nil, err
+	}
+	return response.Result, nil
+}
+
+func (c *Client) javaZuluVersions(ctx context.Context) ([]Version, error) {
+	packages, err := c.javaZuluPackages(ctx)
+	if err != nil {
+		return nil, err
+	}
+	versions := make([]Version, 0, len(packages))
+	for _, item := range packages {
+		version := strings.SplitN(item.JavaVersion, "+", 2)[0]
+		if version == "" {
+			continue
+		}
+		versions = append(versions, Version{Number: version + ".fx-zulu", LTS: item.TermOfSupport == "lts"})
 	}
 	return stableReleases(versions), nil
 }
@@ -81,6 +138,11 @@ func javaAssetsURLWithPageSize(featureVersion int, osName, architecture string, 
 }
 
 func (c *Client) javaArtifact(ctx context.Context, version string) (Artifact, error) {
+	if strings.HasSuffix(version, ".fx-zulu") || strings.HasSuffix(version, "-fx-zulu") {
+		version = strings.TrimSuffix(strings.TrimSuffix(version, ".fx-zulu"), "-fx-zulu")
+		return c.javaZuluArtifact(ctx, version)
+	}
+	version = strings.TrimSuffix(version, "-tem")
 	osName, architecture, err := javaPlatform()
 	if err != nil {
 		return Artifact{}, err
@@ -111,6 +173,55 @@ func (c *Client) javaArtifact(ctx context.Context, version string) (Artifact, er
 		}
 	}
 	return Artifact{}, fmt.Errorf("no Java archive with checksum for %s/%s %s", osName, architecture, version)
+}
+
+func (c *Client) javaZuluArtifact(ctx context.Context, version string) (Artifact, error) {
+	packages, err := c.javaZuluPackages(ctx)
+	if err != nil {
+		return Artifact{}, err
+	}
+	for _, item := range packages {
+		if strings.SplitN(item.JavaVersion, "+", 2)[0] != version {
+			continue
+		}
+		infoURL := item.PackageInfoURI
+		if infoURL == "" {
+			infoURL = item.Links.PackageInfo
+		}
+		if infoURL == "" {
+			continue
+		}
+		var details struct {
+			Result []struct {
+				DirectDownload string `json:"direct_download_uri"`
+				Checksum       string `json:"checksum"`
+				ChecksumType   string `json:"checksum_type"`
+			} `json:"result"`
+		}
+		if err := c.getJSON(ctx, infoURL, &details); err != nil {
+			return Artifact{}, err
+		}
+		if len(details.Result) > 0 && details.Result[0].DirectDownload != "" && details.Result[0].Checksum != "" {
+			algorithm := details.Result[0].ChecksumType
+			if algorithm == "" {
+				algorithm = "sha256"
+			}
+			return Artifact{URL: details.Result[0].DirectDownload, Checksum: installer.Checksum{Algorithm: algorithm, Value: details.Result[0].Checksum}}, nil
+		}
+	}
+	return Artifact{}, fmt.Errorf("no Azul Zulu JavaFX archive with checksum for %s", version)
+}
+
+func foojayPlatform() (string, string, error) {
+	osName, supported := map[string]string{"darwin": "macos", "linux": "linux", "windows": "windows"}[runtime.GOOS]
+	if !supported {
+		return "", "", fmt.Errorf("Zulu Java is not supported on %s", runtime.GOOS)
+	}
+	architecture := map[string]string{"amd64": "x86_64", "arm64": "aarch64"}[runtime.GOARCH]
+	if architecture == "" {
+		return "", "", fmt.Errorf("Zulu Java is not supported on %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+	return osName, architecture, nil
 }
 
 func javaPlatform() (string, string, error) {

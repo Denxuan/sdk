@@ -81,6 +81,9 @@ func setProjectVersion(stateStore *store.Store, toolName, version string, out io
 		return err
 	}
 	if !hasVersion(state.Installed[tool], version) {
+		version = normalizeToolVersion(tool, version)
+	}
+	if !hasVersion(state.Installed[tool], version) {
 		return fmt.Errorf("%s %s is not installed", tool, version)
 	}
 	directory, err := currentWorkingDirectory()

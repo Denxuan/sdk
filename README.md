@@ -13,6 +13,8 @@
 go build -o sdk .
 ./sdk install go 1.26.4
 ./sdk install java       # 安装最新 LTS Java
+./sdk install java 26.0.2.fx-zulu # 安装 Azul Zulu JavaFX
+./sdk install java 26.0.2-tem      # 安装 Eclipse Temurin
 ./sdk install mvnd       # 安装最新 Maven mvnd
 ./sdk install gradle     # 安装最新 Gradle
 ./sdk default go 1.26.4
@@ -38,6 +40,8 @@ source ~/.zshrc
 配置完成后请使用 `sdk default java 21.0.12`，不要使用 `./sdk default ...`；前者是 shell 函数，能自动应用新的环境变量。
 
 `sdk default` 会更新每个工具目录中的 `current` 软链接，例如 `~/.sdk/tools/java/current`。Java 安装会被规整为版本目录就是 `JAVA_HOME`，因此 `~/.sdk/tools/java/25.0.4/bin/java` 可直接执行。`sdk env` 会输出 `JAVA_HOME`、`MAVEN_HOME`、`MVND_HOME`、`GRADLE_HOME`、`GOROOT`、`NODE_HOME` 和相应的 `PATH` 设置。
+
+Java 支持 Eclipse Temurin 和 Azul Zulu JavaFX：版本后缀分别是 `-tem` 和 `.fx-zulu`。不指定版本时默认安装 Eclipse Temurin 的最新 LTS 版本；直接输入不带后缀的 Java 版本时也按 `-tem` 处理。
 
 状态默认保存在 `~/.sdk/state.json`。开发和测试时可用 `SDK_HOME` 隔离状态：
 
