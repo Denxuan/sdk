@@ -10,7 +10,7 @@
 - MCP 工具、参数、资源和错误提示增加中英文描述，中文 AI 客户端可以直接理解工具用途。
 - 新增独立的 `mvnd` 工具，支持 Maven mvnd 的远程版本查询、安装、切换、卸载、更新和项目版本管理。
 - 新增独立的 `gradle` 工具，支持 Gradle 官方稳定版本的查询、安装、切换、卸载、更新和项目版本管理。
-- Java 支持 Eclipse Temurin（`26.0.2-tem`）和 Azul Zulu JavaFX（`26.0.2.fx-zulu`）；不带版本号或不带发行版后缀时默认使用 Temurin。
+- Java 支持 Eclipse Temurin（`26.0.2-tem`）和 Azul Zulu（`26.0.2-zulu`）；`fx` 不作为发行版后缀的一部分，不带版本号或不带发行版后缀时默认使用 Temurin。
 - 抽取共享只读服务层，供 CLI 与 MCP 查询已安装版本、当前版本、远程版本、路径、项目版本、doctor 和更新检查。
 - 新增 MCP 服务协议测试和共享服务测试。
 

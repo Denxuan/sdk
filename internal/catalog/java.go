@@ -92,7 +92,7 @@ func (c *Client) javaZuluVersions(ctx context.Context) ([]Version, error) {
 		if version == "" {
 			continue
 		}
-		versions = append(versions, Version{Number: version + ".fx-zulu", LTS: item.TermOfSupport == "lts"})
+		versions = append(versions, Version{Number: version + "-zulu", LTS: item.TermOfSupport == "lts"})
 	}
 	return stableReleases(versions), nil
 }
@@ -138,8 +138,8 @@ func javaAssetsURLWithPageSize(featureVersion int, osName, architecture string, 
 }
 
 func (c *Client) javaArtifact(ctx context.Context, version string) (Artifact, error) {
-	if strings.HasSuffix(version, ".fx-zulu") || strings.HasSuffix(version, "-fx-zulu") {
-		version = strings.TrimSuffix(strings.TrimSuffix(version, ".fx-zulu"), "-fx-zulu")
+	if strings.HasSuffix(version, "-zulu") {
+		version = strings.TrimSuffix(version, "-zulu")
 		return c.javaZuluArtifact(ctx, version)
 	}
 	version = strings.TrimSuffix(version, "-tem")

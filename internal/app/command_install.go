@@ -91,7 +91,10 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 }
 
 func normalizeToolVersion(tool model.Tool, version string) string {
-	if tool == model.Java && !strings.Contains(version, "-") {
+	if tool != model.Java {
+		return version
+	}
+	if !strings.Contains(version, "-") {
 		return version + "-tem"
 	}
 	return version

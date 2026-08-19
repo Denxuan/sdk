@@ -62,7 +62,7 @@ func TestNormalizeJavaVersionDefaultsToTemurin(t *testing.T) {
 	if got := normalizeToolVersion(model.Java, "26.0.2"); got != "26.0.2-tem" {
 		t.Fatalf("normalized Java version = %q", got)
 	}
-	if got := normalizeToolVersion(model.Java, "26.0.2.fx-zulu"); got != "26.0.2.fx-zulu" {
+	if got := normalizeToolVersion(model.Java, "26.0.2-zulu"); got != "26.0.2-zulu" {
 		t.Fatalf("Zulu Java version changed = %q", got)
 	}
 }
