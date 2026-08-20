@@ -25,7 +25,7 @@ type Version struct {
 }
 
 func New() *Client {
-	return &Client{HTTP: &http.Client{Timeout: 15 * time.Second}}
+	return &Client{HTTP: &http.Client{Timeout: 60 * time.Second}}
 }
 
 func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]Version, error) {

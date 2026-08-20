@@ -153,6 +153,12 @@ func (c *Client) javaArtifact(ctx context.Context, version string) (Artifact, er
 		return Artifact{}, fmt.Errorf("parse Java feature version %q: %w", featureVersion, err)
 	}
 	var response []struct {
+		Binaries []struct {
+			Package struct {
+				Link     string `json:"link"`
+				Checksum string `json:"checksum"`
+			} `json:"package"`
+		} `json:"binaries"`
 		Binary struct {
 			Package struct {
 				Link     string `json:"link"`
@@ -168,7 +174,15 @@ func (c *Client) javaArtifact(ctx context.Context, version string) (Artifact, er
 	}
 	for _, release := range response {
 		releaseVersion := strings.SplitN(release.VersionData.Semver, "+", 2)[0]
-		if releaseVersion == version && release.Binary.Package.Link != "" && release.Binary.Package.Checksum != "" {
+		if releaseVersion != version {
+			continue
+		}
+		for _, binary := range release.Binaries {
+			if binary.Package.Link != "" && binary.Package.Checksum != "" {
+				return Artifact{URL: binary.Package.Link, Checksum: installer.Checksum{Algorithm: "sha256", Value: binary.Package.Checksum}}, nil
+			}
+		}
+		if release.Binary.Package.Link != "" && release.Binary.Package.Checksum != "" {
 			return Artifact{URL: release.Binary.Package.Link, Checksum: installer.Checksum{Algorithm: "sha256", Value: release.Binary.Package.Checksum}}, nil
 		}
 	}

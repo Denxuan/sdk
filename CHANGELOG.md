@@ -6,6 +6,7 @@
 
 ## 未发布
 
+- 修复 Adoptium Java 资产接口改为 `binaries[]` 后无法读取下载链接和 checksum 的问题。
 - 新增 `sdk mcp serve`，通过官方 Go MCP SDK 以 stdio 提供只读工具和资源。
 - MCP 工具、参数、资源和错误提示增加中英文描述，中文 AI 客户端可以直接理解工具用途。
 - 新增独立的 `mvnd` 工具，支持 Maven mvnd 的远程版本查询、安装、切换、卸载、更新和项目版本管理。
