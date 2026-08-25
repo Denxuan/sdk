@@ -14,6 +14,7 @@ import (
 	"github.com/Denxuan/sdk/internal/catalog"
 	"github.com/Denxuan/sdk/internal/installer"
 	"github.com/Denxuan/sdk/internal/model"
+	"github.com/Denxuan/sdk/internal/rustup"
 	"github.com/Denxuan/sdk/internal/store"
 )
 
@@ -25,6 +26,9 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 	tool, err := parseTool(toolName)
 	if err != nil {
 		return err
+	}
+	if tool == model.Rust {
+		return installRust(ctx, stateStore, version, out)
 	}
 	if version == "" {
 		if existingPath != "" {
@@ -86,6 +90,36 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		if setAsDefault {
 			return setDefault(ctx, stateStore, []string{string(tool), version}, out, os.Stdin)
 		}
+	}
+	return nil
+}
+
+func installRust(ctx context.Context, stateStore *store.Store, version string, out io.Writer) error {
+	if version == "" {
+		version = "stable"
+	}
+	state, err := stateStore.Load()
+	if err != nil {
+		return err
+	}
+	if hasVersion(state.Installed[model.Rust], version) {
+		return fmt.Errorf("rust %s is already registered", version)
+	}
+	toolchainPath, err := rustup.Install(ctx, out, version)
+	if err != nil {
+		return err
+	}
+	state.Installed[model.Rust] = append(state.Installed[model.Rust], model.InstalledVersion{Version: version, Path: toolchainPath, Managed: false, InstalledAt: time.Now().UTC()})
+	if err := stateStore.Save(state); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(out, "installed rust %s at %s\n", version, toolchainPath)
+	setAsDefault, err := askToSetDefault(out, os.Stdin, model.Rust, version)
+	if err != nil {
+		return err
+	}
+	if setAsDefault {
+		return setDefault(ctx, stateStore, []string{string(model.Rust), version}, out, os.Stdin)
 	}
 	return nil
 }

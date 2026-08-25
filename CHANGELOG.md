@@ -2,7 +2,7 @@
 
 ## 当前版本
 
-`sdk` 是一个面向 Java、Maven、Maven mvnd、Gradle、Go 和 Node.js 的开发工具版本管理命令行程序。
+`sdk` 是一个面向 Java、Maven、Maven mvnd、Gradle、Rust、Go 和 Node.js 的开发工具版本管理命令行程序。
 
 ## 未发布
 
@@ -11,6 +11,7 @@
 - MCP 工具、参数、资源和错误提示增加中英文描述，中文 AI 客户端可以直接理解工具用途。
 - 新增独立的 `mvnd` 工具，支持 Maven mvnd 的远程版本查询、安装、切换、卸载、更新和项目版本管理。
 - 新增独立的 `gradle` 工具，支持 Gradle 官方稳定版本的查询、安装、切换、卸载、更新和项目版本管理。
+- 新增 Rust 的 `rustup` 后端：支持自动安装 rustup、安装/切换/卸载 toolchain，以及 `sdk rustup ...` 命令透传。
 - Java 支持 Eclipse Temurin（`26.0.2-tem`）和 Azul Zulu（`26.0.2-zulu`）；`fx` 不作为发行版后缀的一部分，不带版本号或不带发行版后缀时默认使用 Temurin。
 - 抽取共享只读服务层，供 CLI 与 MCP 查询已安装版本、当前版本、远程版本、路径、项目版本、doctor 和更新检查。
 - 新增 MCP 服务协议测试和共享服务测试。
@@ -19,7 +20,7 @@
 
 ### 工具与版本查询
 
-- 支持 Java、Maven、Maven mvnd、Gradle、Go、Node.js 六种工具。
+- 支持 Java、Maven、Maven mvnd、Gradle、Rust、Go、Node.js 七种工具。
 - `sdk remote <tool>` / `sdk available <tool>`：从官方源列出可用正式版本。
 - 自动过滤 Alpha、Beta、RC、Milestone、Snapshot、EA 等预发布版本。
 - Java 显示每个功能版本线的最新正式发行版，例如 `25.0.4-tem` 和 `25.0.4.fx-zulu`。
@@ -34,7 +35,7 @@
 - `sdk default <tool> <version>` / `sdk use <tool> <version>`：设置默认版本。
 - `sdk current [tool]`：显示全部已下载工具的当前版本，或显示单个工具的当前版本。
 - `sdk list [tool]`：查看已管理版本并标记默认版本。
-- `sdk uninstall <tool> <version>`：卸载非默认版本。
+- `sdk uninstall <tool> <version>`：卸载版本；如果卸载的是默认版本，同时清除默认设置和 `current` 链接。
 - Java 在 macOS 上安装后会规整目录，使版本目录本身就是 `JAVA_HOME`，例如 `~/.sdk/tools/java/25.0.4/bin/java`。
 - 下载完成后强制校验官方摘要：Java、Go、Node.js 使用 SHA-256；Maven 使用 SHA-512。校验失败的包不会解压或安装。
 
@@ -85,6 +86,7 @@
     ├── maven/<version>/
     ├── mvnd/<version>/
     ├── gradle/<version>/
+    ├── rust/<version>/  # 记录 rustup toolchain 路径
     ├── go/<version>/
     └── nodejs/<version>/
 ```

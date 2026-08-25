@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Denxuan/sdk/internal/model"
+	"github.com/Denxuan/sdk/internal/rustup"
 	"github.com/Denxuan/sdk/internal/store"
 )
 
@@ -26,17 +27,31 @@ func printEnvironment(stateStore *store.Store, args []string, out io.Writer) err
 		return err
 	}
 	pathEntries := make([]string, 0, len(model.Tools()))
+	activeTools := make(map[model.Tool]bool, len(targets))
 	for _, tool := range model.Tools() {
 		target, found := targets[tool]
 		if !found {
 			continue
 		}
+		activeTools[tool] = true
 		for _, variable := range environmentVariables(tool, target.Path) {
 			_, _ = fmt.Fprintf(out, "export %s=%q\n", variable.name, variable.value)
+		}
+		if tool == model.Rust {
+			pathEntries = append(pathEntries, rustup.CargoBin())
+			continue
 		}
 		pathEntries = append(pathEntries, filepath.Join(target.Path, "bin"))
 		if tool == model.Go {
 			pathEntries = append(pathEntries, goToolPaths()...)
+		}
+	}
+	for _, tool := range model.Tools() {
+		if activeTools[tool] {
+			continue
+		}
+		for _, variable := range environmentVariables(tool, "") {
+			_, _ = fmt.Fprintf(out, "unset %s\n", variable.name)
 		}
 	}
 	if len(pathEntries) > 0 {

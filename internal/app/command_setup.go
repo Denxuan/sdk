@@ -99,7 +99,7 @@ sdk() {
   local sdk_exit=$?
 
   case "$1" in
-    default|use|install|update)
+    default|use|install|update|uninstall)
       if [ "$sdk_exit" -eq 0 ]; then
         _sdk_refresh_environment
       fi

@@ -65,6 +65,8 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 			return fmt.Errorf("usage: sdk mcp serve")
 		}
 		return mcpserver.NewServer(home).Run(ctx)
+	case "rustup":
+		return rustupCommand(ctx, args[1:], out)
 	default:
 		return fmt.Errorf("unknown command %q (run sdk help)", args[0])
 	}
@@ -84,7 +86,7 @@ func resolveHome() (string, error) {
 func parseTool(value string) (model.Tool, error) {
 	tool := model.Tool(strings.ToLower(value))
 	if !tool.Valid() {
-		return "", fmt.Errorf("unsupported tool %q; supported: java, nodejs, maven, mvnd, gradle, go", value)
+		return "", fmt.Errorf("unsupported tool %q; supported: java, nodejs, maven, mvnd, gradle, rust, go", value)
 	}
 	return tool, nil
 }

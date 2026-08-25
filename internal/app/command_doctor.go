@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/Denxuan/sdk/internal/model"
+	"github.com/Denxuan/sdk/internal/rustup"
 	"github.com/Denxuan/sdk/internal/store"
 )
 
@@ -116,6 +117,15 @@ func checkCurrentLink(report *doctorReport, stateStore *store.Store, tool model.
 }
 
 func checkEnvironment(report *doctorReport, stateStore *store.Store, tool model.Tool) {
+	if tool == model.Rust {
+		cargoBin := rustup.CargoBin()
+		if pathContains(os.Getenv("PATH"), cargoBin) {
+			report.ok("rust PATH", cargoBin)
+		} else {
+			report.warn("rust PATH", fmt.Sprintf("%s is missing; run eval \"$(sdk env)\"", cargoBin))
+		}
+		return
+	}
 	currentPath := stateStore.CurrentPath(tool)
 	expectedBin := filepath.Join(currentPath, "bin")
 	if pathContains(os.Getenv("PATH"), expectedBin) {
@@ -156,6 +166,8 @@ func executableNames(tool model.Tool) []string {
 		return []string{"mvnd"}
 	case model.Gradle:
 		return []string{"gradle"}
+	case model.Rust:
+		return []string{"rustc", "cargo"}
 	case model.Go:
 		return []string{"go"}
 	case model.NodeJS:

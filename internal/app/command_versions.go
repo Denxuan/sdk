@@ -13,6 +13,7 @@ import (
 
 	"github.com/Denxuan/sdk/internal/installer"
 	"github.com/Denxuan/sdk/internal/model"
+	"github.com/Denxuan/sdk/internal/rustup"
 	"github.com/Denxuan/sdk/internal/store"
 )
 
@@ -114,6 +115,11 @@ func setDefault(ctx context.Context, stateStore *store.Store, args []string, out
 	if !hasVersion(state.Installed[tool], args[1]) {
 		return fmt.Errorf("%s %s is not installed", tool, args[1])
 	}
+	if tool == model.Rust {
+		if err := rustup.Default(ctx, out, args[1]); err != nil {
+			return err
+		}
+	}
 	previousVersion := state.Defaults[tool]
 	previousInstallation, hasPreviousInstallation := findInstallation(state.Installed[tool], previousVersion)
 	state.Defaults[tool] = args[1]
@@ -171,12 +177,21 @@ func uninstall(stateStore *store.Store, args []string, out io.Writer) error {
 		return err
 	}
 	version := args[1]
-	if state.Defaults[tool] == version {
-		return fmt.Errorf("%s %s is the default; choose another version first", tool, version)
-	}
+	isDefault := state.Defaults[tool] == version
 	removed, remaining, found := removeVersion(state.Installed[tool], version)
 	if !found {
 		return fmt.Errorf("%s %s is not installed", tool, version)
+	}
+	if tool == model.Rust {
+		if err := rustup.Uninstall(context.Background(), out, version); err != nil {
+			return err
+		}
+	}
+	if isDefault {
+		if err := stateStore.RemoveCurrent(tool); err != nil {
+			return err
+		}
+		delete(state.Defaults, tool)
 	}
 	if removed.Managed {
 		if err := removeManagedFiles(stateStore, removed.Path); err != nil {

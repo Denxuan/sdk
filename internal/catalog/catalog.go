@@ -38,6 +38,8 @@ func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]Version, erro
 		return c.mvndVersions(ctx)
 	case model.Gradle:
 		return c.gradleVersions(ctx)
+	case model.Rust:
+		return []Version{{Number: "stable"}}, nil
 	case model.Go:
 		return c.goVersions(ctx)
 	case model.NodeJS:
@@ -57,6 +59,8 @@ func (c *Client) Artifact(ctx context.Context, tool model.Tool, version string) 
 		return c.mvndArtifact(ctx, version)
 	case model.Gradle:
 		return c.gradleArtifact(ctx, version)
+	case model.Rust:
+		return Artifact{}, fmt.Errorf("Rust versions are managed by rustup")
 	case model.Go:
 		return c.goArtifact(ctx, version)
 	case model.NodeJS:

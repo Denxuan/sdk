@@ -11,6 +11,7 @@ import (
 
 	"github.com/Denxuan/sdk/internal/catalog"
 	"github.com/Denxuan/sdk/internal/model"
+	"github.com/Denxuan/sdk/internal/rustup"
 	"github.com/Denxuan/sdk/internal/store"
 )
 
@@ -85,6 +86,13 @@ func updateTargets(stateStore *store.Store, args []string) ([]model.Tool, error)
 }
 
 func updateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, out io.Writer) error {
+	if tool == model.Rust {
+		if err := rustup.Update(ctx, out); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintln(out, "updated rust toolchains")
+		return nil
+	}
 	version, err := recommendedVersion(ctx, tool)
 	if err != nil {
 		return err

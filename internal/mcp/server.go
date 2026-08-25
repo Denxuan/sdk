@@ -19,7 +19,7 @@ type Server struct {
 func NewServer(home string) *Server { return &Server{read: service.NewRead(home)} }
 
 type toolInput struct {
-	Tool *string `json:"tool,omitempty" jsonschema:"工具名称 / Tool name: java, nodejs, maven, mvnd, gradle, or go."`
+	Tool *string `json:"tool,omitempty" jsonschema:"工具名称 / Tool name: java, nodejs, maven, mvnd, gradle, rust, or go."`
 }
 
 type directoryInput struct {
@@ -79,7 +79,7 @@ func parseTool(value *string) (*model.Tool, error) {
 	}
 	tool := model.Tool(*value)
 	if !tool.Valid() {
-		return nil, fmt.Errorf("不支持的工具 %q / unsupported tool; 支持的工具 / supported tools: java, nodejs, maven, mvnd, gradle, go", *value)
+		return nil, fmt.Errorf("不支持的工具 %q / unsupported tool; 支持的工具 / supported tools: java, nodejs, maven, mvnd, gradle, rust, go", *value)
 	}
 	return &tool, nil
 }

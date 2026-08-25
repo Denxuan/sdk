@@ -18,7 +18,7 @@ Usage:
   sdk current [tool]                   Print current versions, optionally for one tool
   sdk default <tool> <version>         Set the global default version
   sdk use <tool> <version>             Compatibility alias for default
-  sdk uninstall <tool> <version>       Remove a non-default registration
+  sdk uninstall <tool> <version>       Uninstall a version and clear it if it is default
   sdk env [--project]                  Print environment variables; project versions override defaults
   sdk doctor                           Diagnose installations, current links, and environment
   sdk path <tool>                      Print the current tool directory
@@ -28,10 +28,11 @@ Usage:
   sdk project list                     Show the nearest .sdk-version file
   sdk setup zsh                        Add sdk initialization to ~/.zshrc
   sdk mcp serve                        Run the MCP server over stdio
+  sdk rustup <args...>                 Run rustup with automatic installation
   sdk selfupdate [version]             Update sdk from a GitHub Release
   sdk version                          Print the sdk version
 
-Supported tools: java, nodejs, maven, mvnd, gradle, go
+Supported tools: java, nodejs, maven, mvnd, gradle, rust, go
 State location: $SDK_HOME (or ~/.sdk)
 `)
 }

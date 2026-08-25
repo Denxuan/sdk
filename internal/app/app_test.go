@@ -53,8 +53,15 @@ func TestInstallUseListAndRemove(t *testing.T) {
 	if err != nil || !strings.Contains(got, "* 1.26.4") {
 		t.Fatalf("list = %q, %v", got, err)
 	}
-	if _, err = run("uninstall", "go", "1.26.4"); err == nil {
-		t.Fatal("uninstalling the default version succeeded")
+	if _, err = run("uninstall", "go", "1.26.4"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = os.Lstat(currentLink); !os.IsNotExist(err) {
+		t.Fatalf("current link still exists: %v", err)
+	}
+	environment, err = run("env")
+	if err != nil || strings.Contains(environment, "export GOROOT") || strings.Contains(environment, "tools/go/current") {
+		t.Fatalf("environment after uninstall = %q, %v", environment, err)
 	}
 }
 

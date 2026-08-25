@@ -49,6 +49,24 @@ func (s *Store) SetCurrent(tool model.Tool, target string) error {
 	return nil
 }
 
+func (s *Store) RemoveCurrent(tool model.Tool) error {
+	current := s.CurrentPath(tool)
+	info, err := os.Lstat(current)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("inspect current link: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return fmt.Errorf("refusing to remove non-symlink path %s", current)
+	}
+	if err := os.Remove(current); err != nil {
+		return fmt.Errorf("remove current link: %w", err)
+	}
+	return nil
+}
+
 func emptyState() model.State {
 	return model.State{Defaults: make(map[model.Tool]string), Installed: make(map[model.Tool][]model.InstalledVersion)}
 }

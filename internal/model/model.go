@@ -11,19 +11,20 @@ const (
 	Maven  Tool = "maven"
 	MVND   Tool = "mvnd"
 	Gradle Tool = "gradle"
+	Rust   Tool = "rust"
 	Go     Tool = "go"
 )
 
 func (t Tool) Valid() bool {
 	switch t {
-	case Java, NodeJS, Maven, MVND, Gradle, Go:
+	case Java, NodeJS, Maven, MVND, Gradle, Rust, Go:
 		return true
 	default:
 		return false
 	}
 }
 
-func Tools() []Tool { return []Tool{Java, NodeJS, Maven, MVND, Gradle, Go} }
+func Tools() []Tool { return []Tool{Java, NodeJS, Maven, MVND, Gradle, Rust, Go} }
 
 type InstalledVersion struct {
 	Version     string    `json:"version"`
