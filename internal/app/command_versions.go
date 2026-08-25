@@ -34,6 +34,9 @@ func list(stateStore *store.Store, args []string, out io.Writer) error {
 		tools = []model.Tool{tool}
 	}
 	for _, tool := range tools {
+		if len(args) == 0 && len(state.Installed[tool]) == 0 {
+			continue
+		}
 		printInstalledVersions(out, tool, state.Installed[tool], state.Defaults[tool])
 	}
 	return nil
