@@ -12,6 +12,7 @@
 - 新增独立的 `mvnd` 工具，支持 Maven mvnd 的远程版本查询、安装、切换、卸载、更新和项目版本管理。
 - 新增独立的 `gradle` 工具，支持 Gradle 官方稳定版本的查询、安装、切换、卸载、更新和项目版本管理。
 - 新增 Rust 的 `rustup` 后端：支持自动安装 rustup、安装/切换/卸载 toolchain，以及 `sdk rustup ...` 命令透传。
+- 新增 `sdk uninstall rustup`，可删除 rustup、Rust toolchain 及 SDK 中的 Rust 登记。
 - Java 支持 Eclipse Temurin（`26.0.2-tem`）和 Azul Zulu（`26.0.2-zulu`）；`fx` 不作为发行版后缀的一部分，不带版本号或不带发行版后缀时默认使用 Temurin。
 - 抽取共享只读服务层，供 CLI 与 MCP 查询已安装版本、当前版本、远程版本、路径、项目版本、doctor 和更新检查。
 - 新增 MCP 服务协议测试和共享服务测试。

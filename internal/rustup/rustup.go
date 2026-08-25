@@ -14,7 +14,7 @@ import (
 )
 
 func Ensure(ctx context.Context, out io.Writer) (string, error) {
-	if path, err := exec.LookPath("rustup"); err == nil {
+	if path := findPath(); path != "" {
 		return path, nil
 	}
 	home, err := os.UserHomeDir()
@@ -69,6 +69,21 @@ func Ensure(ctx context.Context, out io.Writer) (string, error) {
 	return path, nil
 }
 
+func findPath() string {
+	if path, err := exec.LookPath("rustup"); err == nil {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	path := filepath.Join(home, ".cargo", "bin", "rustup")
+	if _, err := os.Stat(path); err == nil {
+		return path
+	}
+	return ""
+}
+
 func Run(ctx context.Context, out io.Writer, args ...string) error {
 	path, err := Ensure(ctx, out)
 	if err != nil {
@@ -95,6 +110,20 @@ func Uninstall(ctx context.Context, out io.Writer, version string) error {
 }
 
 func Update(ctx context.Context, out io.Writer) error { return Run(ctx, out, "update") }
+
+func SelfUninstall(ctx context.Context, out io.Writer) error {
+	path := findPath()
+	if path == "" {
+		return fmt.Errorf("rustup is not installed")
+	}
+	cmd := exec.CommandContext(ctx, path, "self", "uninstall")
+	cmd.Stdin = strings.NewReader("y\n")
+	cmd.Stdout, cmd.Stderr = out, out
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("uninstall rustup: %w", err)
+	}
+	return nil
+}
 
 func ToolchainPath(ctx context.Context, out io.Writer, version string) (string, error) {
 	path, err := Ensure(ctx, out)

@@ -53,6 +53,9 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 	case "use", "default":
 		return setDefault(ctx, stateStore, args[1:], out, os.Stdin)
 	case "uninstall":
+		if len(args) == 2 && args[1] == "rustup" {
+			return uninstallRustup(ctx, stateStore, out)
+		}
 		return uninstall(stateStore, args[1:], out)
 	case "install":
 		return install(ctx, stateStore, args[1:], out)

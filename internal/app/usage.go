@@ -19,6 +19,7 @@ Usage:
   sdk default <tool> <version>         Set the global default version
   sdk use <tool> <version>             Compatibility alias for default
   sdk uninstall <tool> <version>       Uninstall a version and clear it if it is default
+  sdk uninstall rustup                  Remove rustup and all Rust toolchains
   sdk env [--project]                  Print environment variables; project versions override defaults
   sdk doctor                           Diagnose installations, current links, and environment
   sdk path <tool>                      Print the current tool directory

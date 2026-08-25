@@ -77,6 +77,7 @@ MCP 工具的名称保持英文，便于客户端稳定调用；工具描述、�
 | `sdk default <tool> <version>` | 设置全局默认版本。`use` 是兼容别名。 |
 | `sdk current [tool]` | 不带参数时显示所有已下载工具的当前版本；指定工具时仅显示该工具。 |
 | `sdk uninstall <tool> <version>` | 卸载版本；如果是默认版本，同时清除默认设置和对应环境变量。 |
+| `sdk uninstall rustup` | 删除 rustup 以及 Rust toolchain。 |
 | `sdk env` | 输出当前版本对应的环境变量与 `PATH` 设置。 |
 
 ## 自身更新
