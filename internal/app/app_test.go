@@ -91,6 +91,30 @@ func TestFormatRemoteVersionsMarksInstalledAndDefault(t *testing.T) {
 	}
 }
 
+func TestFormatJavaRemoteVersionsSeparatesVendors(t *testing.T) {
+	var out bytes.Buffer
+	state := model.State{
+		Defaults: map[model.Tool]string{model.Java: "25.0.4-tem"},
+		Installed: map[model.Tool][]model.InstalledVersion{
+			model.Java: {{Version: "25.0.4-tem"}, {Version: "25.0.4-zulu"}},
+		},
+	}
+	formatRemoteVersions(&out, model.Java, []catalog.Version{
+		{Number: "25.0.4-zulu", LTS: true},
+		{Number: "26.0.2-tem"},
+		{Number: "25.0.4-tem", LTS: true},
+	}, state)
+	got := out.String()
+	temurin := strings.Index(got, "Available Eclipse Temurin Java Versions")
+	zulu := strings.Index(got, "Available Azul Zulu Java Versions")
+	if temurin < 0 || zulu < 0 || temurin >= zulu {
+		t.Fatalf("Java vendors were not separated:\n%s", got)
+	}
+	if !strings.Contains(got[temurin:zulu], "> * 25.0.4-tem LTS") || strings.Contains(got[temurin:zulu], "-zulu") {
+		t.Fatalf("Temurin group = %q", got[temurin:zulu])
+	}
+}
+
 func TestRemoteVersionLabelAddsLTSWithoutChangingVersionLookup(t *testing.T) {
 	state := model.State{
 		Defaults:  map[model.Tool]string{model.Java: "21.0.12"},
