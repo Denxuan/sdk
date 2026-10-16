@@ -104,6 +104,15 @@ sdk() {
         _sdk_refresh_environment
       fi
       ;;
+    project)
+      case "$2" in
+        set|unset|remove)
+          if [ "$sdk_exit" -eq 0 ]; then
+            _sdk_refresh_environment
+          fi
+          ;;
+      esac
+      ;;
   esac
 
   return "$sdk_exit"

@@ -26,6 +26,8 @@ Usage:
   sdk which <tool>                     Print the current tool executable path
   sdk project init                     Create .sdk-version from current defaults
   sdk project set <tool> <version>     Set a version in .sdk-version in the current directory
+  sdk project unset <tool>             Remove a tool version from .sdk-version in the current directory
+  sdk project remove                   Remove the nearest .sdk-version file
   sdk project list                     Show the nearest .sdk-version file
   sdk setup zsh                        Add sdk initialization to ~/.zshrc
   sdk mcp serve                        Run the MCP server over stdio

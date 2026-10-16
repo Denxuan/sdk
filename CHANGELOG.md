@@ -6,6 +6,8 @@
 
 ## 未发布
 
+- 新增 `sdk project unset <tool>`，移除当前目录 `.sdk-version` 中指定工具的版本。
+- 新增 `sdk project remove`，删除当前目录或最近父目录中的 `.sdk-version` 文件。
 - 修复 Adoptium Java 资产接口改为 `binaries[]` 后无法读取下载链接和 checksum 的问题。
 - 新增 `sdk mcp serve`，通过官方 Go MCP SDK 以 stdio 提供只读工具和资源。
 - MCP 工具、参数、资源和错误提示增加中英文描述，中文 AI 客户端可以直接理解工具用途。

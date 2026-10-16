@@ -17,7 +17,7 @@ const projectVersionFile = ".sdk-version"
 
 func project(stateStore *store.Store, args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: sdk project <init|set|list>")
+		return errors.New("usage: sdk project <init|set|unset|remove|list>")
 	}
 	switch args[0] {
 	case "init":
@@ -30,14 +30,67 @@ func project(stateStore *store.Store, args []string, out io.Writer) error {
 			return errors.New("usage: sdk project set <tool> <version>")
 		}
 		return setProjectVersion(stateStore, args[1], args[2], out)
+	case "unset":
+		if len(args) != 2 {
+			return errors.New("usage: sdk project unset <tool>")
+		}
+		return unsetProjectVersion(args[1], out)
+	case "remove":
+		if len(args) != 1 {
+			return errors.New("usage: sdk project remove")
+		}
+		return removeProjectFile(out)
 	case "list":
 		if len(args) != 1 {
 			return errors.New("usage: sdk project list")
 		}
 		return listProjectVersions(out)
 	default:
-		return fmt.Errorf("unknown project command %q (use init, set, or list)", args[0])
+		return fmt.Errorf("unknown project command %q (use init, set, unset, remove, or list)", args[0])
 	}
+}
+
+func removeProjectFile(out io.Writer) error {
+	path, found, err := findProjectFile()
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("no %s found in this directory or its parents", projectVersionFile)
+	}
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("remove project file %s: %w", path, err)
+	}
+	_, _ = fmt.Fprintf(out, "removed %s\n", path)
+	return nil
+}
+
+func unsetProjectVersion(toolName string, out io.Writer) error {
+	tool, err := parseTool(toolName)
+	if err != nil {
+		return err
+	}
+	directory, err := currentWorkingDirectory()
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(directory, projectVersionFile)
+	versions, err := readProjectVersions(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("no %s in current directory", projectVersionFile)
+		}
+		return err
+	}
+	if _, found := versions[tool]; !found {
+		return fmt.Errorf("%s is not set in %s", tool, path)
+	}
+	delete(versions, tool)
+	if err := writeProjectVersions(path, versions); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintf(out, "unset %s in %s\n", tool, path)
+	return nil
 }
 
 func initializeProject(stateStore *store.Store, out io.Writer) error {
@@ -123,22 +176,32 @@ func listProjectVersions(out io.Writer) error {
 }
 
 func findProjectVersions() (string, map[model.Tool]string, bool, error) {
-	directory, err := currentWorkingDirectory()
+	path, found, err := findProjectFile()
+	if err != nil || !found {
+		return "", nil, false, err
+	}
+	versions, err := readProjectVersions(path)
 	if err != nil {
 		return "", nil, false, err
 	}
+	return path, versions, true, nil
+}
+
+func findProjectFile() (string, bool, error) {
+	directory, err := currentWorkingDirectory()
+	if err != nil {
+		return "", false, err
+	}
 	for {
 		path := filepath.Join(directory, projectVersionFile)
-		versions, err := readProjectVersions(path)
-		if err == nil {
-			return path, versions, true, nil
-		}
-		if !errors.Is(err, os.ErrNotExist) {
-			return "", nil, false, err
+		if _, err := os.Stat(path); err == nil {
+			return path, true, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return "", false, err
 		}
 		parent := filepath.Dir(directory)
 		if parent == directory {
-			return "", nil, false, nil
+			return "", false, nil
 		}
 		directory = parent
 	}

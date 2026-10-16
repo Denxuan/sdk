@@ -42,6 +42,8 @@ source ~/.zshrc
 
 `sdk default` 会更新每个工具目录中的 `current` 软链接，例如 `~/.sdk/tools/java/current`。Java 安装会被规整为版本目录就是 `JAVA_HOME`，因此 `~/.sdk/tools/java/25.0.4/bin/java` 可直接执行。`sdk env` 会输出 `JAVA_HOME`、`MAVEN_HOME`、`MVND_HOME`、`GRADLE_HOME`、`GOROOT`、`NODE_HOME`，并将 Rust 的 `~/.cargo/bin` 加入 `PATH`。
 
+项目可用 `.sdk-version` 固定工具版本：`sdk project init` 从当前默认版本创建文件，`sdk project set <tool> <version>` 设置当前目录的版本，`sdk project unset <tool>` 移除该工具的项目版本约束，`sdk project remove` 删除当前目录或最近父目录中的配置文件；zsh 集成会在这些命令成功后刷新环境。`sdk env --project` 可手动应用项目配置。
+
 Rust 由官方 `rustup` 管理。执行 `sdk install rust <toolchain>` 时，如果系统没有 `rustup`，SDK 会自动下载安装 `rustup-init`；也可以直接透传命令，例如 `sdk rustup target add aarch64-apple-darwin`。
 
 Java 支持 Eclipse Temurin 和 Azul Zulu JDK：版本后缀分别是 `-tem` 和 `-zulu`。Zulu 的具体包特性由内部下载策略选择，不作为版本后缀的一部分。不指定版本时默认安装 Eclipse Temurin 的最新 LTS 版本；直接输入不带后缀的 Java 版本时也按 `-tem` 处理。旧的 `.fx-zulu` 后缀不再支持。
