@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -88,11 +89,22 @@ func (i *Installer) Install(ctx context.Context, url, destination string, checks
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(temp)
-	archive := filepath.Join(temp, "package")
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+
+		}
+	}(temp)
+	archive := partialDownloadPath(destination, url)
 	if err := i.download(ctx, url, archive); err != nil {
 		return err
 	}
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+
+		}
+	}(archive)
 	if i.Verify != nil {
 		i.Verify(checksum)
 	}
@@ -122,7 +134,12 @@ func verifyChecksum(path string, checksum Checksum) error {
 	if err != nil {
 		return fmt.Errorf("open downloaded archive for checksum: %w", err)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
 
 	var actual []byte
 	switch strings.ToLower(checksum.Algorithm) {
@@ -172,29 +189,120 @@ func (i *Installer) download(ctx context.Context, url, target string) error {
 }
 
 func (i *Installer) downloadOnce(ctx context.Context, url, target string) error {
+	offset := int64(0)
+	if info, err := os.Stat(target); err == nil {
+		offset = info.Size()
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
+	}
+	if offset > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
 	}
 	resp, err := i.HTTP.Do(req)
 	if err != nil {
 		return fmt.Errorf("download %s: %w", url, err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
+	if resp.StatusCode == http.StatusRequestedRangeNotSatisfiable && offset > 0 {
+		start, total, ok := parseContentRange(resp.Header.Get("Content-Range"))
+		if ok && start == -1 && total == offset {
+			if i.Progress != nil {
+				i.Progress(Progress{Downloaded: offset, Total: total})
+			}
+			return nil
+		}
+		if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return i.downloadOnce(ctx, url, target)
+	}
+	if resp.StatusCode == http.StatusPartialContent {
+		start, _, ok := parseContentRange(resp.Header.Get("Content-Range"))
+		if !ok || start != offset {
+			if offset == 0 {
+				return fmt.Errorf("server returned invalid content range for %s", url)
+			}
+			if err := os.Remove(target); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+			return i.downloadOnce(ctx, url, target)
+		}
+	} else if resp.StatusCode != http.StatusOK {
 		return &downloadStatusError{URL: url, StatusCode: resp.StatusCode, Status: resp.Status}
 	}
-	file, err := os.Create(target)
+	if resp.StatusCode == http.StatusOK {
+		offset = 0
+	}
+	flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+	if resp.StatusCode == http.StatusPartialContent && offset > 0 {
+		flags = os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	}
+	file, err := os.OpenFile(target, flags, 0644)
 	if err != nil {
 		return err
 	}
-	writer := &progressWriter{writer: file, total: resp.ContentLength, report: i.Progress}
+	total := resp.ContentLength
+	if resp.StatusCode == http.StatusPartialContent {
+		_, contentTotal, ok := parseContentRange(resp.Header.Get("Content-Range"))
+		if ok && contentTotal >= 0 {
+			total = contentTotal
+		} else if total >= 0 {
+			total += offset
+		}
+	}
+	writer := &progressWriter{writer: file, total: total, downloaded: offset, report: i.Progress}
+	writer.reportProgress()
 	_, copyErr := io.Copy(writer, io.LimitReader(resp.Body, 2<<30))
 	closeErr := file.Close()
 	if copyErr != nil {
 		return copyErr
 	}
 	return closeErr
+}
+
+func partialDownloadPath(destination, url string) string {
+	// shortcut: the URL identifies the partial file; use catalog artifact IDs if download URLs become ephemeral.
+	key := sha256.Sum256([]byte(url))
+	return filepath.Join(filepath.Dir(destination), ".sdk-download-"+hex.EncodeToString(key[:]))
+}
+
+func parseContentRange(value string) (start, total int64, ok bool) {
+	if !strings.HasPrefix(value, "bytes ") {
+		return 0, 0, false
+	}
+	byteRange, totalText, found := strings.Cut(strings.TrimPrefix(value, "bytes "), "/")
+	if !found {
+		return 0, 0, false
+	}
+	total = -1
+	if totalText != "*" {
+		parsedTotal, err := strconv.ParseInt(totalText, 10, 64)
+		if err != nil || parsedTotal < 0 {
+			return 0, 0, false
+		}
+		total = parsedTotal
+	}
+	if byteRange == "*" {
+		return -1, total, total >= 0
+	}
+	startText, _, found := strings.Cut(byteRange, "-")
+	if !found {
+		return 0, 0, false
+	}
+	start, err := strconv.ParseInt(startText, 10, 64)
+	if err != nil || start < 0 {
+		return 0, 0, false
+	}
+	return start, total, true
 }
 
 type downloadStatusError struct {
@@ -283,7 +391,12 @@ func extract(archive, destination string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
 	header := make([]byte, 4)
 	if _, err := io.ReadFull(file, header); err != nil {
 		return fmt.Errorf("read archive: %w", err)
@@ -299,7 +412,12 @@ func extract(archive, destination string) error {
 		if err != nil {
 			return err
 		}
-		defer gz.Close()
+		defer func(gz *gzip.Reader) {
+			err := gz.Close()
+			if err != nil {
+
+			}
+		}(gz)
 		return extractTAR(tar.NewReader(gz), destination)
 	}
 	return fmt.Errorf("unsupported archive format")
@@ -340,7 +458,7 @@ func extractZIP(reader *os.File, destination string) error {
 				err = closeErr
 			}
 		}
-		source.Close()
+		err = source.Close()
 		if err != nil {
 			return err
 		}

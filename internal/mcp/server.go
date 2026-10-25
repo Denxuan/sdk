@@ -89,12 +89,12 @@ func (s *Server) listInstalled(ctx context.Context, _ *sdkmcp.CallToolRequest, i
 	if err != nil {
 		return nil, installedOutput{}, err
 	}
-	items, err := s.read.ListInstalled(ctx, tool)
+	items, err := s.read.ListInstalled(tool)
 	return nil, installedOutput{Items: items}, err
 }
 
 func (s *Server) currentVersions(ctx context.Context, _ *sdkmcp.CallToolRequest, _ struct{}) (*sdkmcp.CallToolResult, currentOutput, error) {
-	items, err := s.read.CurrentVersions(ctx)
+	items, err := s.read.CurrentVersions()
 	return nil, currentOutput{Items: items}, err
 }
 
@@ -118,26 +118,26 @@ func (s *Server) path(ctx context.Context, _ *sdkmcp.CallToolRequest, in toolInp
 		}
 		return nil, pathOutput{}, err
 	}
-	path, err := s.read.ToolPath(ctx, *tool)
+	path, err := s.read.ToolPath(*tool)
 	if err != nil {
 		return nil, pathOutput{}, err
 	}
-	executables, err := s.read.ToolExecutables(ctx, *tool)
+	executables, err := s.read.ToolExecutables(*tool)
 	return nil, pathOutput{Tool: *tool, Path: path, Executables: executables}, err
 }
 
 func (s *Server) projectVersions(ctx context.Context, _ *sdkmcp.CallToolRequest, in directoryInput) (*sdkmcp.CallToolResult, service.Project, error) {
-	project, err := s.read.ProjectVersions(ctx, in.Directory)
+	project, err := s.read.ProjectVersions(in.Directory)
 	return nil, project, err
 }
 
 func (s *Server) doctor(ctx context.Context, _ *sdkmcp.CallToolRequest, _ struct{}) (*sdkmcp.CallToolResult, service.Doctor, error) {
-	report, err := s.read.DoctorReport(ctx)
+	report, err := s.read.DoctorReport()
 	return nil, report, err
 }
 
 func (s *Server) state(ctx context.Context, _ *sdkmcp.CallToolRequest, _ struct{}) (*sdkmcp.CallToolResult, map[string]any, error) {
-	data, err := s.read.StateJSON(ctx)
+	data, err := s.read.StateJSON()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -154,22 +154,22 @@ func (s *Server) checkUpdates(ctx context.Context, _ *sdkmcp.CallToolRequest, _ 
 }
 
 func (s *Server) resourceState(ctx context.Context, req *sdkmcp.ReadResourceRequest) (*sdkmcp.ReadResourceResult, error) {
-	data, err := s.read.StateJSON(ctx)
+	data, err := s.read.StateJSON()
 	return resourceResult(req.Params.URI, data, err)
 }
 
 func (s *Server) resourceCurrent(ctx context.Context, req *sdkmcp.ReadResourceRequest) (*sdkmcp.ReadResourceResult, error) {
-	data, err := s.read.CurrentVersions(ctx)
+	data, err := s.read.CurrentVersions()
 	return marshalResource(req.Params.URI, data, err)
 }
 
 func (s *Server) resourceDoctor(ctx context.Context, req *sdkmcp.ReadResourceRequest) (*sdkmcp.ReadResourceResult, error) {
-	data, err := s.read.DoctorReport(ctx)
+	data, err := s.read.DoctorReport()
 	return marshalResource(req.Params.URI, data, err)
 }
 
 func (s *Server) resourceProject(ctx context.Context, req *sdkmcp.ReadResourceRequest) (*sdkmcp.ReadResourceResult, error) {
-	data, err := s.read.ProjectVersions(ctx, "")
+	data, err := s.read.ProjectVersions("")
 	return marshalResource(req.Params.URI, data, err)
 }
 

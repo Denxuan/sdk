@@ -38,7 +38,12 @@ func Ensure(ctx context.Context, out io.Writer) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("download rustup-init: %w", err)
 	}
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(response.Body)
 	if response.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("download rustup-init: server returned %s", response.Status)
 	}
@@ -47,9 +52,17 @@ func Ensure(ctx context.Context, out io.Writer) (string, error) {
 		return "", err
 	}
 	tempPath := temp.Name()
-	defer os.Remove(tempPath)
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+
+		}
+	}(tempPath)
 	if _, err := io.Copy(temp, response.Body); err != nil {
-		temp.Close()
+		err := temp.Close()
+		if err != nil {
+			return "", err
+		}
 		return "", err
 	}
 	if err := temp.Close(); err != nil {

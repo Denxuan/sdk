@@ -82,6 +82,8 @@ MCP 工具的名称保持英文，便于客户端稳定调用；工具描述、�
 | `sdk uninstall rustup` | 删除 rustup 以及 Rust toolchain。 |
 | `sdk env` | 输出当前版本对应的环境变量与 `PATH` 设置。 |
 
+下载因网络中断失败后，重新执行同一 `sdk install` 或 `sdk update` 命令会尝试从已下载位置续传；如果下载源不支持 HTTP Range，会自动从头下载。完成后仍会校验官方 checksum。
+
 ## 自身更新
 
 `sdk selfupdate` 会下载 GitHub 最新 Release 中与当前系统匹配的发布包，并替换当前 `sdk` 二进制。也可指定版本：

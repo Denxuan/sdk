@@ -6,6 +6,7 @@
 
 ## 未发布
 
+- 下载中断后保留未完成归档；下次安装或更新通过 HTTP Range 从已下载位置续传，完成后仍校验官方 checksum。
 - 新增 `sdk project unset <tool>`，移除当前目录 `.sdk-version` 中指定工具的版本。
 - 新增 `sdk project remove`，删除当前目录或最近父目录中的 `.sdk-version` 文件。
 - 修复 Adoptium Java 资产接口改为 `binaries[]` 后无法读取下载链接和 checksum 的问题。
@@ -96,7 +97,7 @@
 
 ## 后续建议
 
-- 下载缓存与断点续传。
+- 下载缓存。
 - 安装后的可执行文件验证。
 - 远程版本索引缓存。
 - 项目级 `.sdk.json` 版本配置。

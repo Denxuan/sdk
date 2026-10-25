@@ -74,7 +74,12 @@ func (u *Updater) release(ctx context.Context, requestedVersion string) (Release
 	if err != nil {
 		return Release{}, fmt.Errorf("request release metadata: %w", err)
 	}
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(response.Body)
 	if response.StatusCode != http.StatusOK {
 		return Release{}, fmt.Errorf("request release metadata: GitHub returned %s", response.Status)
 	}
@@ -91,7 +96,12 @@ func (u *Updater) replaceFromAsset(ctx context.Context, asset Asset, executable 
 	if err != nil {
 		return fmt.Errorf("create update directory: %w", err)
 	}
-	defer os.RemoveAll(temporary)
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+
+		}
+	}(temporary)
 	archivePath := filepath.Join(temporary, asset.Name)
 	if err := u.download(ctx, asset.DownloadURL, archivePath); err != nil {
 		return err
@@ -118,7 +128,12 @@ func (u *Updater) download(ctx context.Context, url, target string) error {
 	if err != nil {
 		return fmt.Errorf("download update asset: %w", err)
 	}
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(response.Body)
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("download update asset: server returned %s", response.Status)
 	}
@@ -162,12 +177,22 @@ func extractTarGzipExecutable(archivePath, target string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
 	gzipReader, err := gzip.NewReader(file)
 	if err != nil {
 		return err
 	}
-	defer gzipReader.Close()
+	defer func(gzipReader *gzip.Reader) {
+		err := gzipReader.Close()
+		if err != nil {
+
+		}
+	}(gzipReader)
 	reader := tar.NewReader(gzipReader)
 	for {
 		header, err := reader.Next()
@@ -189,7 +214,12 @@ func extractZIPExecutable(archivePath, target string) error {
 	if err != nil {
 		return err
 	}
-	defer archive.Close()
+	defer func(archive *zip.ReadCloser) {
+		err := archive.Close()
+		if err != nil {
+
+		}
+	}(archive)
 	for _, entry := range archive.File {
 		if entry.FileInfo().IsDir() || !isSDKExecutable(entry.Name) {
 			continue
@@ -199,7 +229,10 @@ func extractZIPExecutable(archivePath, target string) error {
 			return err
 		}
 		err = copyExecutable(target, reader)
-		reader.Close()
+		err = reader.Close()
+		if err != nil {
+			return err
+		}
 		return err
 	}
 	return errors.New("update archive does not contain sdk executable")

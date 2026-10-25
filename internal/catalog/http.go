@@ -54,7 +54,12 @@ func (c *Client) decode(ctx context.Context, url string, decode func(io.Reader) 
 	if err != nil {
 		return fmt.Errorf("request %s: %w", url, err)
 	}
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(response.Body)
 	if response.StatusCode != http.StatusOK {
 		return &StatusError{URL: url, StatusCode: response.StatusCode, Status: response.Status}
 	}

@@ -105,7 +105,12 @@ func (s *Store) Save(state model.State) error {
 		return fmt.Errorf("create temporary state: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+
+		}
+	}(tmpName)
 	if _, err = tmp.Write(data); err == nil {
 		err = tmp.Chmod(0644)
 	}

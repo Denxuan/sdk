@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,11 +33,11 @@ func TestReadServiceCurrentAndProject(t *testing.T) {
 	}
 
 	read := NewRead(home)
-	current, err := read.CurrentVersions(context.Background())
+	current, err := read.CurrentVersions()
 	if err != nil || len(current) != 1 || current[0].Version != "1.26.5" {
 		t.Fatalf("current = %#v, err = %v", current, err)
 	}
-	project, err := read.ProjectVersions(context.Background(), projectDir)
+	project, err := read.ProjectVersions(projectDir)
 	if err != nil || !project.Found || project.Versions[model.Go] != "1.26.5" {
 		t.Fatalf("project = %#v, err = %v", project, err)
 	}

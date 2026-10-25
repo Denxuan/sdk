@@ -74,7 +74,7 @@ type Update struct {
 	Available bool       `json:"available"`
 }
 
-func (s *ReadService) ListInstalled(ctx context.Context, selected *model.Tool) ([]Installed, error) {
+func (s *ReadService) ListInstalled(selected *model.Tool) ([]Installed, error) {
 	state, err := s.Store.Load()
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (s *ReadService) ListInstalled(ctx context.Context, selected *model.Tool) (
 	return result, nil
 }
 
-func (s *ReadService) CurrentVersions(ctx context.Context) ([]Current, error) {
+func (s *ReadService) CurrentVersions() ([]Current, error) {
 	state, err := s.Store.Load()
 	if err != nil {
 		return nil, err
@@ -155,7 +155,7 @@ func (s *ReadService) CheckUpdates(ctx context.Context) ([]Update, error) {
 	return result, nil
 }
 
-func (s *ReadService) ToolPath(ctx context.Context, tool model.Tool) (string, error) {
+func (s *ReadService) ToolPath(tool model.Tool) (string, error) {
 	state, err := s.Store.Load()
 	if err != nil {
 		return "", err
@@ -166,8 +166,8 @@ func (s *ReadService) ToolPath(ctx context.Context, tool model.Tool) (string, er
 	return s.Store.CurrentPath(tool), nil
 }
 
-func (s *ReadService) ToolExecutables(ctx context.Context, tool model.Tool) (map[string]string, error) {
-	path, err := s.ToolPath(ctx, tool)
+func (s *ReadService) ToolExecutables(tool model.Tool) (map[string]string, error) {
+	path, err := s.ToolPath(tool)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (s *ReadService) ToolExecutables(ctx context.Context, tool model.Tool) (map
 	return result, nil
 }
 
-func (s *ReadService) ProjectVersions(ctx context.Context, directory string) (Project, error) {
+func (s *ReadService) ProjectVersions(directory string) (Project, error) {
 	if directory == "" {
 		var err error
 		directory, err = os.Getwd()
@@ -215,7 +215,7 @@ func (s *ReadService) ProjectVersions(ctx context.Context, directory string) (Pr
 	}
 }
 
-func (s *ReadService) StateJSON(ctx context.Context) ([]byte, error) {
+func (s *ReadService) StateJSON() ([]byte, error) {
 	state, err := s.Store.Load()
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func (s *ReadService) StateJSON(ctx context.Context) ([]byte, error) {
 	return json.Marshal(state)
 }
 
-func (s *ReadService) DoctorReport(ctx context.Context) (Doctor, error) {
+func (s *ReadService) DoctorReport() (Doctor, error) {
 	report := Doctor{}
 	check := func(name, status, detail string) {
 		report.Checks = append(report.Checks, Check{Name: name, Status: status, Detail: detail})
