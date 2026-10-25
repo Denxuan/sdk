@@ -155,33 +155,29 @@ func offerOldVersionCleanup(stateStore *store.Store, tool model.Tool, newVersion
 	if len(candidates) == 0 {
 		return nil
 	}
-	versions := make([]string, 0, len(candidates))
+	reader := bufio.NewReader(in)
 	for _, item := range candidates {
-		versions = append(versions, item.Version)
-	}
-	_, _ = fmt.Fprintf(out, "Remove old %s versions (%s)? [y/N]: ", tool, strings.Join(versions, ", "))
-	answer, err := bufio.NewReader(in).ReadString('\n')
-	if err != nil && len(answer) == 0 {
-		if errors.Is(err, io.EOF) {
-			return nil
+		_, _ = fmt.Fprintf(out, "Remove old %s %s? [y/N]: ", tool, item.Version)
+		answer, err := reader.ReadString('\n')
+		if err != nil && len(answer) == 0 {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
 		}
-		return err
-	}
-	if !isAffirmative(answer) {
-		return nil
-	}
-
-	for _, item := range candidates {
+		if !isAffirmative(answer) {
+			continue
+		}
 		if err := removeManagedFiles(stateStore, item.Path); err != nil {
 			return err
 		}
 		_, remaining, _ := removeVersion(state.Installed[tool], item.Version)
 		state.Installed[tool] = remaining
+		if err := stateStore.Save(state); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(out, "removed old %s version: %s\n", tool, item.Version)
 	}
-	if err := stateStore.Save(state); err != nil {
-		return err
-	}
-	_, _ = fmt.Fprintf(out, "removed old %s versions: %s\n", tool, strings.Join(versions, ", "))
 	return nil
 }
 
