@@ -9,6 +9,12 @@
 - 下载中断后保留未完成归档；下次安装或更新通过 HTTP Range 从已下载位置续传，完成后仍校验官方 checksum。
 - 新增 `sdk project install`，按最近的 `.sdk-version` 安装缺少的工具版本且不修改全局默认。
 - 新增 `sdk clean`，清理未完成的工具下载文件。
+- 新增 `sdk project status`，检查项目固定版本是否已安装且可运行。
+- 新增 Bash shell 初始化支持：`sdk setup bash`。
+- 新增 Windows PowerShell 初始化和环境输出支持，默认切换不再依赖 Windows 目录软链接权限。
+- `sdk doctor` 检查所有已登记版本的主程序，不再只检查当前默认版本。
+- `sdk remote <tool> --refresh` 强制刷新远程版本列表缓存。
+- Windows 默认版本解析不依赖当前版本符号链接，并在 README 标出 shell 与系统支持边界。
 - 安装完成后验证工具主执行文件存在且可运行，避免登记无效安装。
 - 远程版本列表缓存一小时；网络不可用时回退到已有缓存。
 - 新增 `sdk project unset <tool>`，移除当前目录 `.sdk-version` 中指定工具的版本。

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/Denxuan/sdk/internal/model"
@@ -14,9 +15,12 @@ import (
 )
 
 func printEnvironment(stateStore *store.Store, args []string, out io.Writer) error {
-	useProject, err := parseProjectFlag(args)
+	useProject, powershell, err := parseEnvironmentFlags(args)
 	if err != nil {
 		return err
+	}
+	if runtime.GOOS == "windows" {
+		powershell = true
 	}
 	state, err := stateStore.Load()
 	if err != nil {
@@ -35,13 +39,13 @@ func printEnvironment(stateStore *store.Store, args []string, out io.Writer) err
 		}
 		activeTools[tool] = true
 		for _, variable := range environmentVariables(tool, target.Path) {
-			_, _ = fmt.Fprintf(out, "export %s=%q\n", variable.name, variable.value)
+			writeEnvironmentVariable(out, variable, powershell)
 		}
 		if tool == model.Rust {
 			pathEntries = append(pathEntries, rustup.CargoBin())
 			continue
 		}
-		pathEntries = append(pathEntries, filepath.Join(target.Path, "bin"))
+		pathEntries = append(pathEntries, installationBinPath(tool, target.Path))
 		if tool == model.Go {
 			pathEntries = append(pathEntries, goToolPaths()...)
 		}
@@ -51,14 +55,36 @@ func printEnvironment(stateStore *store.Store, args []string, out io.Writer) err
 			continue
 		}
 		for _, variable := range environmentVariables(tool, "") {
-			_, _ = fmt.Fprintf(out, "unset %s\n", variable.name)
+			if powershell {
+				_, _ = fmt.Fprintf(out, "Remove-Item Env:%s -ErrorAction SilentlyContinue\n", variable.name)
+			} else {
+				_, _ = fmt.Fprintf(out, "unset %s\n", variable.name)
+			}
 		}
 	}
 	if len(pathEntries) > 0 {
-		_, _ = fmt.Fprintf(out, "export PATH=%q:$PATH\n", strings.Join(pathEntries, ":"))
+		if powershell {
+			quoted := make([]string, len(pathEntries))
+			for index, path := range pathEntries {
+				quoted[index] = powershellQuote(path)
+			}
+			_, _ = fmt.Fprintf(out, "$env:Path = ((@(%s) + @($env:Path -split ';' | Where-Object { $_ })) | Select-Object -Unique) -join ';'\n", strings.Join(quoted, ", "))
+		} else {
+			_, _ = fmt.Fprintf(out, "export PATH=%q:$PATH\n", strings.Join(pathEntries, ":"))
+		}
 	}
 	return nil
 }
+
+func writeEnvironmentVariable(out io.Writer, variable environmentVariable, powershell bool) {
+	if powershell {
+		_, _ = fmt.Fprintf(out, "$env:%s = %s\n", variable.name, powershellQuote(variable.value))
+	} else {
+		_, _ = fmt.Fprintf(out, "export %s=%q\n", variable.name, variable.value)
+	}
+}
+
+func powershellQuote(value string) string { return "'" + strings.ReplaceAll(value, "'", "''") + "'" }
 
 func goToolPaths() []string {
 	if gobin := os.Getenv("GOBIN"); gobin != "" {
@@ -91,7 +117,15 @@ func environmentTargets(stateStore *store.Store, state model.State, useProject b
 		if version == "" {
 			continue
 		}
-		targets[tool] = environmentTarget{Version: version, Path: stateStore.CurrentPath(tool)}
+		path := stateStore.CurrentPath(tool)
+		if runtime.GOOS == "windows" {
+			installation, found := findInstallation(state.Installed[tool], version)
+			if !found {
+				return nil, fmt.Errorf("default %s version %s is not installed", tool, version)
+			}
+			path = installation.Path
+		}
+		targets[tool] = environmentTarget{Version: version, Path: path}
 	}
 	if !useProject {
 		return targets, nil
@@ -113,14 +147,18 @@ func environmentTargets(stateStore *store.Store, state model.State, useProject b
 	return targets, nil
 }
 
-func parseProjectFlag(args []string) (bool, error) {
-	if len(args) == 0 {
-		return false, nil
+func parseEnvironmentFlags(args []string) (project, powershell bool, err error) {
+	for _, arg := range args {
+		switch arg {
+		case "--project":
+			project = true
+		case "--powershell":
+			powershell = true
+		default:
+			return false, false, errors.New("usage: sdk env [--project] [--powershell]")
+		}
 	}
-	if len(args) == 1 && args[0] == "--project" {
-		return true, nil
-	}
-	return false, errors.New("usage: sdk env [--project]")
+	return project, powershell, nil
 }
 
 func currentWorkingDirectory() (string, error) {

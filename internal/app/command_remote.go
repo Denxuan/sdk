@@ -16,14 +16,21 @@ import (
 const remoteColumnWidth = 20
 
 func remote(ctx context.Context, stateStore *store.Store, args []string, out io.Writer) error {
-	if len(args) != 1 {
-		return errors.New("usage: sdk remote <tool>")
+	refresh := len(args) == 2 && args[1] == "--refresh"
+	if len(args) != 1 && !refresh {
+		return errors.New("usage: sdk remote <tool> [--refresh]")
 	}
 	tool, err := parseTool(args[0])
 	if err != nil {
 		return err
 	}
-	versions, err := catalog.NewWithCache(filepath.Join(stateStore.Home, "cache", "catalog")).Versions(ctx, tool)
+	client := catalog.NewWithCache(filepath.Join(stateStore.Home, "cache", "catalog"))
+	var versions []catalog.Version
+	if refresh {
+		versions, err = client.RefreshVersions(ctx, tool)
+	} else {
+		versions, err = client.Versions(ctx, tool)
+	}
 	if err != nil {
 		return err
 	}

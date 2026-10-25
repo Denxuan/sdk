@@ -38,11 +38,15 @@ eval "$(./sdk env)"
 source ~/.zshrc
 ```
 
+Bash 用户则执行 `./sdk setup bash` 后运行 `source ~/.bashrc`。Windows PowerShell 用户执行 `sdk setup powershell`，然后重启 PowerShell。
+
+Windows PowerShell 下可以用 `go build -o sdk.exe .` 构建，再通过 `.\sdk.exe install go 1.26.4` 和 `.\sdk.exe setup powershell` 安装工具并启用自动环境切换；重启后直接使用 `sdk`。
+
 配置完成后请使用 `sdk default java 21.0.12`，不要使用 `./sdk default ...`；前者是 shell 函数，能自动应用新的环境变量。
 
-`sdk default` 会更新每个工具目录中的 `current` 软链接，例如 `~/.sdk/tools/java/current`。Java 安装会被规整为版本目录就是 `JAVA_HOME`，因此 `~/.sdk/tools/java/25.0.4/bin/java` 可直接执行。`sdk env` 会输出 `JAVA_HOME`、`MAVEN_HOME`、`MVND_HOME`、`GRADLE_HOME`、`GOROOT`、`NODE_HOME`，并将 Rust 的 `~/.cargo/bin` 加入 `PATH`。
+macOS/Linux 上 `sdk default` 会更新每个工具目录中的 `current` 软链接，例如 `~/.sdk/tools/java/current`；Windows 上默认版本保存在 SDK 状态中，不需要创建软链接。Java 安装目录会作为 `JAVA_HOME`，例如 `~/.sdk/tools/java/25.0.4/bin/java` 可直接执行。`sdk env` 在 Windows 输出 PowerShell 命令，其他系统输出 POSIX shell 命令。
 
-项目可用 `.sdk-version` 固定工具版本：`sdk project init` 从当前默认版本创建文件，`sdk project set <tool> <version>` 设置当前目录的版本，`sdk project install` 安装最近配置文件中缺少的版本但不改全局默认，`sdk project unset <tool>` 移除单个工具版本，`sdk project remove` 删除当前目录或最近父目录中的配置文件。`sdk env --project` 可手动应用项目配置。
+项目可用 `.sdk-version` 固定工具版本：`sdk project init` 从当前默认版本创建文件，`sdk project set <tool> <version>` 设置当前目录的版本，`sdk project install` 安装最近配置文件中缺少的版本但不改全局默认，`sdk project status` 检查版本是否已安装且主执行文件可运行，`sdk project unset <tool>` 移除单个工具版本，`sdk project remove` 删除当前目录或最近父目录中的配置文件。`sdk env --project` 可手动应用项目配置。
 
 Rust 由官方 `rustup` 管理。执行 `sdk install rust <toolchain>` 时，如果系统没有 `rustup`，SDK 会自动下载安装 `rustup-init`；也可以直接透传命令，例如 `sdk rustup target add aarch64-apple-darwin`。
 
@@ -55,6 +59,9 @@ SDK_HOME=/tmp/sdk ./sdk list
 ```
 
 ## 当前边界
+
+- 自动环境集成支持 macOS/Linux 上的 Bash 与 Zsh，以及 Windows PowerShell；Windows CMD 尚未支持。
+- 发布包包含 Windows amd64 CLI。PowerShell profile 会在目录切换时应用最近的 `.sdk-version`，并在 `sdk default/install/update/uninstall` 等命令后刷新环境。
 
 ## MCP 集成
 
@@ -72,7 +79,7 @@ MCP 工具的名称保持英文，便于客户端稳定调用；工具描述、�
 
 | 命令 | 作用 |
 | --- | --- |
-| `sdk remote <tool>` / `sdk available <tool>` | 显示官方远程版本，并标记本机状态。 |
+| `sdk remote <tool> [--refresh]` / `sdk available <tool> [--refresh]` | 显示官方远程版本并标记本机状态；`--refresh` 强制联网并更新缓存。 |
 | `sdk install <tool> [version]` | 下载并安装官方发布包。不传版本时优先最新 LTS，否则使用最新正式版；可加 `--path <dir>` 登记本机已有安装。 |
 | `sdk update [tool]` | 不带参数时更新所有已管理工具；指定工具时仅更新该工具。 |
 | `sdk list [tool]` | 显示 SDK 已管理的本机版本。 |
@@ -80,8 +87,9 @@ MCP 工具的名称保持英文，便于客户端稳定调用；工具描述、�
 | `sdk current [tool]` | 不带参数时显示所有已下载工具的当前版本；指定工具时仅显示该工具。 |
 | `sdk uninstall <tool> <version>` | 卸载版本；如果是默认版本，同时清除默认设置和对应环境变量。 |
 | `sdk uninstall rustup` | 删除 rustup 以及 Rust toolchain。 |
-| `sdk env` | 输出当前版本对应的环境变量与 `PATH` 设置。 |
+| `sdk env [--project] [--powershell]` | 输出当前版本对应的环境变量与 `PATH` 设置；PowerShell 使用 `--powershell`。 |
 | `sdk clean` | 删除 SDK 工具目录中的未完成下载，不影响已安装版本。 |
+| `sdk project status` | 检查最近 `.sdk-version` 中的版本是否已安装且可运行。 |
 
 下载因网络中断失败后，重新执行同一 `sdk install` 或 `sdk update` 命令会尝试从已下载位置续传；如果下载源不支持 HTTP Range，会自动从头下载。完成后仍会校验官方 checksum。
 
@@ -102,6 +110,6 @@ sdk selfupdate v0.0.2
 
 `sdk update` 成功安装新版本后，会询问是否删除旧的 SDK 管理版本。手工通过 `--path` 登记的目录不会被删除，当前默认版本也会被保留。
 
-## 开发路线
+## 开发
 
-当前版本已经能够下载、解压并管理多种工具的官方发布包，并通过 rustup 管理 Rust toolchain。下一阶段将补充安装缓存和项目级 `.sdk.json` 解析。
+发布包与支持的目标平台见 [RELEASE.md](RELEASE.md)。环境自动切换支持 macOS/Linux 上的 Bash、Zsh，以及 Windows PowerShell。

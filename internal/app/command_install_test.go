@@ -20,9 +20,6 @@ func TestValidateInstallationRequiresRunnableExecutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := executableName(model.Go)
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
 	if err := os.WriteFile(filepath.Join(bin, name), []byte("executable"), 0755); err != nil {
 		t.Fatal(err)
 	}

@@ -18,7 +18,7 @@ const projectVersionFile = ".sdk-version"
 
 func project(ctx context.Context, stateStore *store.Store, args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: sdk project <init|set|unset|remove|list>")
+		return errors.New("usage: sdk project <init|set|unset|remove|list|install|status>")
 	}
 	switch args[0] {
 	case "init":
@@ -51,8 +51,13 @@ func project(ctx context.Context, stateStore *store.Store, args []string, out io
 			return errors.New("usage: sdk project list")
 		}
 		return listProjectVersions(out)
+	case "status":
+		if len(args) != 1 {
+			return errors.New("usage: sdk project status")
+		}
+		return projectStatus(stateStore, out)
 	default:
-		return fmt.Errorf("unknown project command %q (use init, set, unset, remove, or list)", args[0])
+		return fmt.Errorf("unknown project command %q (use init, set, unset, remove, list, install, or status)", args[0])
 	}
 }
 
@@ -209,6 +214,49 @@ func listProjectVersions(out io.Writer) error {
 		if version := versions[tool]; version != "" {
 			_, _ = fmt.Fprintf(out, "%s=%s\n", tool, version)
 		}
+	}
+	return nil
+}
+
+func projectStatus(stateStore *store.Store, out io.Writer) error {
+	path, versions, found, err := findProjectVersions()
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("no %s found in this directory or its parents", projectVersionFile)
+	}
+	_, _ = fmt.Fprintf(out, "Project file: %s\n", path)
+	if len(versions) == 0 {
+		_, _ = fmt.Fprintln(out, "No tool versions are pinned.")
+		return nil
+	}
+	state, err := stateStore.Load()
+	if err != nil {
+		return err
+	}
+	issues := 0
+	for _, tool := range model.Tools() {
+		version, pinned := versions[tool]
+		if !pinned {
+			continue
+		}
+		version = normalizeToolVersion(tool, version)
+		installation, installed := findInstallation(state.Installed[tool], version)
+		if !installed {
+			_, _ = fmt.Fprintf(out, "[MISSING] %s %s: run sdk project install\n", tool, version)
+			issues++
+			continue
+		}
+		if err := validateInstallation(tool, installation.Path); err != nil {
+			_, _ = fmt.Fprintf(out, "[BROKEN] %s %s: %v\n", tool, version, err)
+			issues++
+			continue
+		}
+		_, _ = fmt.Fprintf(out, "[OK] %s %s: %s\n", tool, version, installation.Path)
+	}
+	if issues > 0 {
+		return fmt.Errorf("project status found %d issue(s)", issues)
 	}
 	return nil
 }

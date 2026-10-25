@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestPathAndWhichUseCurrentToolLink(t *testing.T) {
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(binDir, "go"), []byte("#!/bin/sh\n"), 0755); err != nil {
+	if err := os.WriteFile(filepath.Join(binDir, executableName(model.Go)), []byte("#!/bin/sh\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	stateStore := store.New(home)
@@ -41,10 +42,14 @@ func TestPathAndWhichUseCurrentToolLink(t *testing.T) {
 		return strings.TrimSpace(out.String()), err
 	}
 	currentPath := filepath.Join(home, "tools", "go", "current")
-	if got, err := run("path", "go"); err != nil || got != currentPath {
+	wantPath := currentPath
+	if runtime.GOOS == "windows" {
+		wantPath = installationPath
+	}
+	if got, err := run("path", "go"); err != nil || got != wantPath {
 		t.Fatalf("sdk path go = %q, %v", got, err)
 	}
-	executable := filepath.Join(currentPath, "bin", "go")
+	executable := filepath.Join(wantPath, "bin", executableName(model.Go))
 	if got, err := run("which", "go"); err != nil || got != executable {
 		t.Fatalf("sdk which go = %q, %v", got, err)
 	}

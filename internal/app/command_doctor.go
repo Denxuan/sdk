@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 
 	"github.com/Denxuan/sdk/internal/model"
@@ -41,7 +42,7 @@ func doctor(stateStore *store.Store, args []string, out io.Writer) error {
 		sort.Slice(installed, func(i, j int) bool { return installed[i].Version < installed[j].Version })
 		for _, installation := range installed {
 			installedCount++
-			report.checkDirectory(fmt.Sprintf("%s %s", tool, installation.Version), installation.Path)
+			checkInstallation(report, tool, installation)
 		}
 	}
 	if installedCount == 0 {
@@ -59,7 +60,7 @@ func doctor(stateStore *store.Store, args []string, out io.Writer) error {
 			continue
 		}
 		checkCurrentLink(report, stateStore, tool, installation)
-		checkEnvironment(report, stateStore, tool)
+		checkEnvironment(report, stateStore, tool, installation)
 	}
 
 	report.summary()
@@ -67,6 +68,10 @@ func doctor(stateStore *store.Store, args []string, out io.Writer) error {
 }
 
 func checkCurrentLink(report *doctorReport, stateStore *store.Store, tool model.Tool, installation model.InstalledVersion) {
+	if runtime.GOOS == "windows" {
+		report.ok(fmt.Sprintf("%s current", tool), installation.Path)
+		return
+	}
 	currentPath := stateStore.CurrentPath(tool)
 	info, err := os.Lstat(currentPath)
 	if errors.Is(err, os.ErrNotExist) {
@@ -100,45 +105,65 @@ func checkCurrentLink(report *doctorReport, stateStore *store.Store, tool model.
 		return
 	}
 	report.ok(fmt.Sprintf("%s current", tool), currentPath)
+}
 
+func checkInstallation(report *doctorReport, tool model.Tool, installation model.InstalledVersion) {
+	label := fmt.Sprintf("%s %s", tool, installation.Version)
+	info, err := os.Stat(installation.Path)
+	if err != nil {
+		report.error(label, err.Error())
+		return
+	}
+	if !info.IsDir() {
+		report.error(label, fmt.Sprintf("%s is not a directory", installation.Path))
+		return
+	}
+	report.ok(label, installation.Path)
 	for _, name := range executableNames(tool) {
-		executable := filepath.Join(currentPath, "bin", name)
+		executable := filepath.Join(installationBinPath(tool, installation.Path), name)
 		info, err = os.Stat(executable)
 		if err != nil {
-			report.error(fmt.Sprintf("%s executable %s", tool, name), fmt.Sprintf("%s: %v", executable, err))
+			report.error(fmt.Sprintf("%s %s executable %s", tool, installation.Version, name), fmt.Sprintf("%s: %v", executable, err))
 			continue
 		}
-		if info.IsDir() || info.Mode()&0111 == 0 {
-			report.error(fmt.Sprintf("%s executable %s", tool, name), fmt.Sprintf("%s is not executable", executable))
+		if info.IsDir() || runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
+			report.error(fmt.Sprintf("%s %s executable %s", tool, installation.Version, name), fmt.Sprintf("%s is not executable", executable))
 			continue
 		}
-		report.ok(fmt.Sprintf("%s executable %s", tool, name), executable)
+		report.ok(fmt.Sprintf("%s %s executable %s", tool, installation.Version, name), executable)
 	}
 }
 
-func checkEnvironment(report *doctorReport, stateStore *store.Store, tool model.Tool) {
+func checkEnvironment(report *doctorReport, stateStore *store.Store, tool model.Tool, installation model.InstalledVersion) {
+	hint := `run eval "$(sdk env)"`
+	if runtime.GOOS == "windows" {
+		hint = "run Update-SdkEnvironment in PowerShell"
+	}
 	if tool == model.Rust {
 		cargoBin := rustup.CargoBin()
 		if pathContains(os.Getenv("PATH"), cargoBin) {
 			report.ok("rust PATH", cargoBin)
 		} else {
-			report.warn("rust PATH", fmt.Sprintf("%s is missing; run eval \"$(sdk env)\"", cargoBin))
+			report.warn("rust PATH", fmt.Sprintf("%s is missing; %s", cargoBin, hint))
 		}
 		return
 	}
 	currentPath := stateStore.CurrentPath(tool)
-	expectedBin := filepath.Join(currentPath, "bin")
+	if runtime.GOOS == "windows" {
+		currentPath = installation.Path
+	}
+	expectedBin := installationBinPath(tool, currentPath)
 	if pathContains(os.Getenv("PATH"), expectedBin) {
 		report.ok(fmt.Sprintf("%s PATH", tool), expectedBin)
 	} else {
-		report.warn(fmt.Sprintf("%s PATH", tool), fmt.Sprintf("%s is missing; run eval \"$(sdk env)\"", expectedBin))
+		report.warn(fmt.Sprintf("%s PATH", tool), fmt.Sprintf("%s is missing; %s", expectedBin, hint))
 	}
 	if tool == model.Go {
 		for _, goPath := range goToolPaths() {
 			if pathContains(os.Getenv("PATH"), goPath) {
 				report.ok("go tools PATH", goPath)
 			} else {
-				report.warn("go tools PATH", fmt.Sprintf("%s is missing; run eval \"$(sdk env)\"", goPath))
+				report.warn("go tools PATH", fmt.Sprintf("%s is missing; %s", goPath, hint))
 			}
 		}
 	}
@@ -147,7 +172,7 @@ func checkEnvironment(report *doctorReport, stateStore *store.Store, tool model.
 		if os.Getenv(variable.name) == variable.value {
 			report.ok(variable.name, variable.value)
 		} else {
-			report.warn(variable.name, fmt.Sprintf("expected %s; run eval \"$(sdk env)\"", variable.value))
+			report.warn(variable.name, fmt.Sprintf("expected %s; %s", variable.value, hint))
 		}
 	}
 }
@@ -157,24 +182,42 @@ func executableName(tool model.Tool) string {
 }
 
 func executableNames(tool model.Tool) []string {
+	var names []string
 	switch tool {
 	case model.Java:
-		return []string{"java"}
+		names = []string{"java"}
 	case model.Maven:
-		return []string{"mvn"}
+		names = []string{"mvn"}
 	case model.MVND:
-		return []string{"mvnd"}
+		names = []string{"mvnd"}
 	case model.Gradle:
-		return []string{"gradle"}
+		names = []string{"gradle"}
 	case model.Rust:
-		return []string{"rustc", "cargo"}
+		names = []string{"rustc", "cargo"}
 	case model.Go:
-		return []string{"go"}
+		names = []string{"go"}
 	case model.NodeJS:
-		return []string{"node", "npm", "npx"}
+		names = []string{"node", "npm", "npx"}
 	default:
-		return []string{string(tool)}
+		names = []string{string(tool)}
 	}
+	if runtime.GOOS == "windows" {
+		for index, name := range names {
+			switch tool {
+			case model.Maven, model.MVND, model.NodeJS:
+				if name != "node" {
+					names[index] = name + ".cmd"
+				} else {
+					names[index] += ".exe"
+				}
+			case model.Gradle:
+				names[index] += ".bat"
+			default:
+				names[index] += ".exe"
+			}
+		}
+	}
+	return names
 }
 
 func pathContains(pathValue, expected string) bool {

@@ -54,6 +54,17 @@ func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]Version, erro
 	return versions, nil
 }
 
+func (c *Client) RefreshVersions(ctx context.Context, tool model.Tool) ([]Version, error) {
+	versions, err := c.fetchVersions(ctx, tool)
+	if err != nil {
+		return nil, err
+	}
+	if c.CacheDir != "" {
+		_ = c.writeVersionsCache(tool, versions)
+	}
+	return versions, nil
+}
+
 func (c *Client) fetchVersions(ctx context.Context, tool model.Tool) ([]Version, error) {
 	switch tool {
 	case model.Java:

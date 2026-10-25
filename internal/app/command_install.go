@@ -216,18 +216,7 @@ func preferredVersion(versions []catalog.Version) string {
 func isDirectory(path string) bool { info, err := os.Stat(path); return err == nil && info.IsDir() }
 
 func validateInstallation(tool model.Tool, root string) error {
-	name := executableName(tool)
-	if runtime.GOOS == "windows" {
-		switch tool {
-		case model.Maven, model.MVND:
-			name += ".cmd"
-		case model.Gradle:
-			name += ".bat"
-		default:
-			name += ".exe"
-		}
-	}
-	path := filepath.Join(root, "bin", name)
+	path := filepath.Join(installationBinPath(tool, root), executableName(tool))
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("installation is missing %s: %w", path, err)
@@ -236,4 +225,11 @@ func validateInstallation(tool model.Tool, root string) error {
 		return fmt.Errorf("installation executable is not runnable: %s", path)
 	}
 	return nil
+}
+
+func installationBinPath(tool model.Tool, root string) string {
+	if tool == model.NodeJS && runtime.GOOS == "windows" {
+		return root
+	}
+	return filepath.Join(root, "bin")
 }

@@ -59,6 +59,28 @@ func TestVersionsFallsBackToStaleCacheWhenNetworkIsUnavailable(t *testing.T) {
 	}
 }
 
+func TestRefreshVersionsBypassesAndReplacesCache(t *testing.T) {
+	directory := t.TempDir()
+	client := NewWithCache(directory)
+	old := []Version{{Number: "1.26.3"}}
+	if err := client.writeVersionsCache(model.Go, old); err != nil {
+		t.Fatal(err)
+	}
+	client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`[{"version":"go1.26.4"}]`)), Header: make(http.Header)}, nil
+	})}
+	want := []Version{{Number: "1.26.4"}}
+	got, err := client.RefreshVersions(context.Background(), model.Go)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("RefreshVersions() = %#v, %v", got, err)
+	}
+	reader := NewWithCache(directory)
+	got, err = reader.Versions(context.Background(), model.Go)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("cached Versions() after refresh = %#v, %v", got, err)
+	}
+}
+
 func TestUniqueSortsReleaseVersionsNumerically(t *testing.T) {
 	got := unique([]string{"3.9.2", "3.9.16", "26", "8", "21", "3.9.16"})
 	want := []string{"26", "21", "8", "3.9.16", "3.9.2"}

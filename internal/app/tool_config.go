@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -79,11 +80,11 @@ type npmGlobalPackage struct {
 }
 
 func migrateNodeGlobalPackages(ctx context.Context, sourcePath, destinationPath string, out io.Writer) {
-	sourceNPM := filepath.Join(sourcePath, "bin", "npm")
-	destinationNPM := filepath.Join(destinationPath, "bin", "npm")
-	packages, err := listNPMGlobalPackages(ctx, sourceNPM)
+	sourceNode, sourceNPMArgs := npmCommand(sourcePath)
+	destinationNode, destinationNPMArgs := npmCommand(destinationPath)
+	packages, err := listNPMGlobalPackages(ctx, sourceNode, sourceNPMArgs...)
 	if err != nil {
-		_, _ = fmt.Fprintf(out, "Warning: could not list global npm packages from %s: %v\n", sourceNPM, err)
+		_, _ = fmt.Fprintf(out, "Warning: could not list global npm packages from %s: %v\n", sourceNode, err)
 		return
 	}
 	if len(packages) == 0 {
@@ -93,7 +94,8 @@ func migrateNodeGlobalPackages(ctx context.Context, sourcePath, destinationPath 
 	_, _ = fmt.Fprintf(out, "Migrating %d global npm package(s)...\n", len(packages))
 	for _, pkg := range packages {
 		spec := npmPackageSpec(pkg)
-		command := exec.CommandContext(ctx, destinationNPM, "install", "--global", spec)
+		args := append(append([]string(nil), destinationNPMArgs...), "install", "--global", spec)
+		command := exec.CommandContext(ctx, destinationNode, args...)
 		output, err := command.CombinedOutput()
 		if err != nil {
 			_, _ = fmt.Fprintf(out, "Warning: could not migrate %s: %v\n", spec, commandError(err, output))
@@ -103,8 +105,16 @@ func migrateNodeGlobalPackages(ctx context.Context, sourcePath, destinationPath 
 	}
 }
 
-func listNPMGlobalPackages(ctx context.Context, npm string) ([]npmGlobalPackage, error) {
-	command := exec.CommandContext(ctx, npm, "ls", "--global", "--depth=0", "--json")
+func npmCommand(root string) (string, []string) {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(root, "node.exe"), []string{filepath.Join(root, "node_modules", "npm", "bin", "npm-cli.js")}
+	}
+	return filepath.Join(root, "bin", "npm"), nil
+}
+
+func listNPMGlobalPackages(ctx context.Context, node string, npmArgs ...string) ([]npmGlobalPackage, error) {
+	args := append(append([]string(nil), npmArgs...), "ls", "--global", "--depth=0", "--json")
+	command := exec.CommandContext(ctx, node, args...)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return nil, commandError(err, output)

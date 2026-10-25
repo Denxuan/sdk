@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestInstallUseListAndRemove(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(installPath, "bin"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(installPath, "bin", "go"), []byte("go"), 0755); err != nil {
+	if err := os.WriteFile(filepath.Join(installPath, "bin", executableName(model.Go)), []byte("go"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	run := func(args ...string) (string, error) {
@@ -39,12 +40,22 @@ func TestInstallUseListAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	currentLink := filepath.Join(home, "tools", "go", "current")
-	target, err := os.Readlink(currentLink)
-	if err != nil || target != installPath {
-		t.Fatalf("current link = %q, %v", target, err)
+	if runtime.GOOS == "windows" {
+		if _, err := os.Lstat(currentLink); !os.IsNotExist(err) {
+			t.Fatalf("unexpected Windows current link: %v", err)
+		}
+	} else {
+		target, err := os.Readlink(currentLink)
+		if err != nil || target != installPath {
+			t.Fatalf("current link = %q, %v", target, err)
+		}
 	}
 	environment, err := run("env")
-	if err != nil || !strings.Contains(environment, "GOROOT=\""+currentLink+"\"") {
+	goRootAssignment := "GOROOT=\"" + currentLink + "\""
+	if runtime.GOOS == "windows" {
+		goRootAssignment = "$env:GOROOT = '" + installPath + "'"
+	}
+	if err != nil || !strings.Contains(environment, goRootAssignment) {
 		t.Fatalf("environment = %q, %v", environment, err)
 	}
 	got, err := run("current", "go")
@@ -179,6 +190,64 @@ func TestReplaceInitializationBlockIsIdempotent(t *testing.T) {
 	}
 	if strings.Count(second, setupStart) != 1 {
 		t.Fatalf("setup start count = %d", strings.Count(second, setupStart))
+	}
+}
+
+func TestBashInitializationAndScript(t *testing.T) {
+	block := bashInitialization("/opt/sdk")
+	if !strings.Contains(block, `export SDK_HOME="/opt/sdk"`) || !strings.Contains(block, `source "$SDK_HOME/init.bash"`) {
+		t.Fatalf("Bash initialization does not source the SDK script:\n%s", block)
+	}
+	script := bashScript("/opt/sdk/bin/sdk")
+	for _, expected := range []string{"sdk()", "PROMPT_COMMAND", "_sdk_check_directory", "env --project"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("Bash script does not contain %q:\n%s", expected, script)
+		}
+	}
+	first := replaceInitializationBlock("export EDITOR=vim\n", block)
+	second := replaceInitializationBlock(first, block)
+	if first != second {
+		t.Fatalf("Bash initialization block changed on second write:\n%s", second)
+	}
+}
+
+func TestPowerShellEnvironmentOutput(t *testing.T) {
+	home := t.TempDir()
+	stateStore := store.New(home)
+	installationPath := filepath.Join(home, "tools", "go", "1.26.5")
+	if err := stateStore.Save(model.State{
+		Defaults: map[model.Tool]string{model.Go: "1.26.5"},
+		Installed: map[model.Tool][]model.InstalledVersion{model.Go: {
+			{Version: "1.26.5", Path: installationPath},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("SDK_HOME", home)
+	var out bytes.Buffer
+	if err := Run(context.Background(), []string{"env", "--powershell"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"$env:GOROOT = '" + stateStore.CurrentPath(model.Go) + "'", "$env:Path = ((@('", "Select-Object -Unique"} {
+		if !strings.Contains(out.String(), expected) {
+			t.Errorf("PowerShell environment output does not contain %q:\n%s", expected, out.String())
+		}
+	}
+	if got := powershellQuote("C:\\SDK's tools"); got != `'C:\SDK''s tools'` {
+		t.Fatalf("PowerShell quoted path = %q", got)
+	}
+}
+
+func TestPowerShellInitializationScript(t *testing.T) {
+	block := powershellInitialization(`C:\Users\test\.sdk`)
+	if !strings.Contains(block, "$env:SDK_HOME = 'C:\\Users\\test\\.sdk'") || !strings.Contains(block, "init.ps1") {
+		t.Fatalf("PowerShell profile block is invalid:\n%s", block)
+	}
+	script := powershellScript(`C:\SDK\sdk.exe`)
+	for _, expected := range []string{"function global:sdk", "env --powershell --project", "function global:prompt", "Update-SdkEnvironment"} {
+		if !strings.Contains(script, expected) {
+			t.Errorf("PowerShell init script does not contain %q:\n%s", expected, script)
+		}
 	}
 }
 

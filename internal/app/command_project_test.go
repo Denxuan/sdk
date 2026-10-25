@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -60,10 +61,18 @@ func TestProjectEnvironmentOverridesGlobalDefaultFromParentDirectory(t *testing.
 	if err := Run(context.Background(), []string{"env", "--project"}, &out); err != nil {
 		t.Fatalf("sdk env --project failed: %v", err)
 	}
-	if !strings.Contains(out.String(), "export GOROOT=\""+projectPath+"\"") {
+	goRootAssignment := "export GOROOT=\"" + projectPath + "\""
+	if runtime.GOOS == "windows" {
+		goRootAssignment = "$env:GOROOT = '" + projectPath + "'"
+	}
+	if !strings.Contains(out.String(), goRootAssignment) {
 		t.Fatalf("project environment did not use project version:\n%s", out.String())
 	}
-	if strings.Contains(out.String(), "export GOROOT=\""+stateStore.CurrentPath(model.Go)+"\"") {
+	globalGoRootAssignment := "export GOROOT=\"" + stateStore.CurrentPath(model.Go) + "\""
+	if runtime.GOOS == "windows" {
+		globalGoRootAssignment = "$env:GOROOT = '" + stateStore.CurrentPath(model.Go) + "'"
+	}
+	if strings.Contains(out.String(), globalGoRootAssignment) {
 		t.Fatalf("project environment used global current link:\n%s", out.String())
 	}
 }
@@ -149,5 +158,79 @@ func TestProjectInstallSkipsInstalledVersionWithoutChangingDefault(t *testing.T)
 	}
 	if state.Defaults[model.Go] != "1.26.5" {
 		t.Fatalf("global Go default changed to %q", state.Defaults[model.Go])
+	}
+}
+
+func TestProjectStatusReportsMissingAndValidInstallations(t *testing.T) {
+	home := t.TempDir()
+	goPath := filepath.Join(home, "tools", "go", "1.26.5")
+	if err := os.MkdirAll(filepath.Join(goPath, "bin"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(goPath, "bin", executableName(model.Go)), []byte("go"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	stateStore := store.New(home)
+	if err := stateStore.Save(model.State{Installed: map[model.Tool][]model.InstalledVersion{
+		model.Go: {{Version: "1.26.5", Path: goPath}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	projectDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectDir, projectVersionFile), []byte("go=1.26.5\njava=25.0.5-tem\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	previousDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(projectDir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(previousDirectory)
+	t.Setenv("SDK_HOME", home)
+
+	var out bytes.Buffer
+	err = Run(context.Background(), []string{"project", "status"}, &out)
+	if err == nil {
+		t.Fatal("project status succeeded with an uninstalled version")
+	}
+	for _, expected := range []string{"[OK] go 1.26.5:", "[MISSING] java 25.0.5-tem:", "sdk project install"} {
+		if !strings.Contains(out.String(), expected) {
+			t.Errorf("project status output missing %q:\n%s", expected, out.String())
+		}
+	}
+}
+
+func TestProjectStatusReportsBrokenExecutable(t *testing.T) {
+	home := t.TempDir()
+	goPath := filepath.Join(home, "tools", "go", "1.26.5")
+	if err := os.MkdirAll(filepath.Join(goPath, "bin"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	stateStore := store.New(home)
+	if err := stateStore.Save(model.State{Installed: map[model.Tool][]model.InstalledVersion{
+		model.Go: {{Version: "1.26.5", Path: goPath}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	projectDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectDir, projectVersionFile), []byte("go=1.26.5\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	previousDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(projectDir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(previousDirectory)
+	t.Setenv("SDK_HOME", home)
+
+	var out bytes.Buffer
+	err = Run(context.Background(), []string{"project", "status"}, &out)
+	if err == nil || !strings.Contains(out.String(), "[BROKEN] go 1.26.5:") {
+		t.Fatalf("project status = %q, %v; want broken executable report", out.String(), err)
 	}
 }

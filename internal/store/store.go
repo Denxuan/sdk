@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/Denxuan/sdk/internal/model"
 )
@@ -20,9 +21,11 @@ func (s *Store) CurrentPath(tool model.Tool) string {
 	return filepath.Join(s.ToolsDir(), string(tool), "current")
 }
 
-// SetCurrent updates the managed current symlink without ever removing a real
-// directory that was not created as a symlink by sdk.
+// SetCurrent updates the Unix current symlink; Windows resolves defaults from state.
 func (s *Store) SetCurrent(tool model.Tool, target string) error {
+	if runtime.GOOS == "windows" {
+		return s.RemoveCurrent(tool)
+	}
 	absTarget, err := filepath.Abs(target)
 	if err != nil {
 		return fmt.Errorf("resolve current target: %w", err)
@@ -41,6 +44,9 @@ func (s *Store) SetCurrent(tool model.Tool, target string) error {
 		return fmt.Errorf("remove temporary current link: %w", err)
 	}
 	if err := os.Symlink(absTarget, temporary); err != nil {
+		if runtime.GOOS == "windows" {
+			return fmt.Errorf("create current link (enable Developer Mode or grant symbolic-link permission): %w", err)
+		}
 		return fmt.Errorf("create current link: %w", err)
 	}
 	if err := os.Rename(temporary, current); err != nil {
@@ -57,6 +63,9 @@ func (s *Store) RemoveCurrent(tool model.Tool) error {
 	}
 	if err != nil {
 		return fmt.Errorf("inspect current link: %w", err)
+	}
+	if runtime.GOOS == "windows" && info.Mode()&os.ModeSymlink == 0 {
+		return nil
 	}
 	if info.Mode()&os.ModeSymlink == 0 {
 		return fmt.Errorf("refusing to remove non-symlink path %s", current)

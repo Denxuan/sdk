@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/Denxuan/sdk/internal/model"
 	"github.com/Denxuan/sdk/internal/store"
@@ -16,7 +17,14 @@ func printToolPath(stateStore *store.Store, args []string, out io.Writer) error 
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintln(out, stateStore.CurrentPath(tool))
+	path := stateStore.CurrentPath(tool)
+	if runtime.GOOS == "windows" {
+		path, err = defaultInstallationPath(stateStore, tool)
+		if err != nil {
+			return err
+		}
+	}
+	_, _ = fmt.Fprintln(out, path)
 	return nil
 }
 
@@ -25,16 +33,36 @@ func printToolExecutable(stateStore *store.Store, args []string, out io.Writer) 
 	if err != nil {
 		return err
 	}
-	executable := filepath.Join(stateStore.CurrentPath(tool), "bin", executableName(tool))
+	root := stateStore.CurrentPath(tool)
+	if runtime.GOOS == "windows" {
+		root, err = defaultInstallationPath(stateStore, tool)
+		if err != nil {
+			return err
+		}
+	}
+	executable := filepath.Join(installationBinPath(tool, root), executableName(tool))
 	info, err := os.Stat(executable)
 	if err != nil {
 		return fmt.Errorf("current %s executable is unavailable at %s: %w", tool, executable, err)
 	}
-	if info.IsDir() || info.Mode()&0111 == 0 {
+	if info.IsDir() || runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 		return fmt.Errorf("current %s executable is not executable: %s", tool, executable)
 	}
 	_, _ = fmt.Fprintln(out, executable)
 	return nil
+}
+
+func defaultInstallationPath(stateStore *store.Store, tool model.Tool) (string, error) {
+	state, err := stateStore.Load()
+	if err != nil {
+		return "", err
+	}
+	version := state.Defaults[tool]
+	installation, found := findInstallation(state.Installed[tool], version)
+	if !found {
+		return "", fmt.Errorf("default %s version %s is not registered", tool, version)
+	}
+	return installation.Path, nil
 }
 
 func currentTool(args []string, stateStore *store.Store) (model.Tool, error) {
