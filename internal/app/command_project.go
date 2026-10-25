@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +16,7 @@ import (
 
 const projectVersionFile = ".sdk-version"
 
-func project(stateStore *store.Store, args []string, out io.Writer) error {
+func project(ctx context.Context, stateStore *store.Store, args []string, out io.Writer) error {
 	if len(args) == 0 {
 		return errors.New("usage: sdk project <init|set|unset|remove|list>")
 	}
@@ -30,6 +31,11 @@ func project(stateStore *store.Store, args []string, out io.Writer) error {
 			return errors.New("usage: sdk project set <tool> <version>")
 		}
 		return setProjectVersion(stateStore, args[1], args[2], out)
+	case "install":
+		if len(args) != 1 {
+			return errors.New("usage: sdk project install")
+		}
+		return installProject(ctx, stateStore, out)
 	case "unset":
 		if len(args) != 2 {
 			return errors.New("usage: sdk project unset <tool>")
@@ -90,6 +96,38 @@ func unsetProjectVersion(toolName string, out io.Writer) error {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "unset %s in %s\n", tool, path)
+	return nil
+}
+
+func installProject(ctx context.Context, stateStore *store.Store, out io.Writer) error {
+	path, versions, found, err := findProjectVersions()
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("no %s found in this directory or its parents", projectVersionFile)
+	}
+	if len(versions) == 0 {
+		return fmt.Errorf("no tool versions are set in %s", path)
+	}
+	state, err := stateStore.Load()
+	if err != nil {
+		return err
+	}
+	for _, tool := range model.Tools() {
+		version, found := versions[tool]
+		if !found {
+			continue
+		}
+		version = normalizeToolVersion(tool, version)
+		if hasVersion(state.Installed[tool], version) {
+			_, _ = fmt.Fprintf(out, "%s %s is already installed\n", tool, version)
+			continue
+		}
+		if err := install(ctx, stateStore, []string{string(tool), version}, out, false); err != nil {
+			return fmt.Errorf("install project %s %s: %w", tool, version, err)
+		}
+	}
 	return nil
 }
 

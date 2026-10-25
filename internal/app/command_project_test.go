@@ -103,3 +103,51 @@ func TestSetProjectVersionCreatesProjectFile(t *testing.T) {
 		t.Fatalf("project file = %q", contents)
 	}
 }
+
+func TestProjectInstallSkipsInstalledVersionWithoutChangingDefault(t *testing.T) {
+	home := t.TempDir()
+	projectVersionPath := filepath.Join(home, "tools", "go", "1.25.0")
+	defaultVersionPath := filepath.Join(home, "tools", "go", "1.26.5")
+	for _, path := range []string{projectVersionPath, defaultVersionPath} {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stateStore := store.New(home)
+	if err := stateStore.Save(model.State{
+		Defaults: map[model.Tool]string{model.Go: "1.26.5"},
+		Installed: map[model.Tool][]model.InstalledVersion{model.Go: {
+			{Version: "1.25.0", Path: projectVersionPath},
+			{Version: "1.26.5", Path: defaultVersionPath},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, projectVersionFile), []byte("go=1.25.0\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	previousDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(directory); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(previousDirectory)
+
+	var out bytes.Buffer
+	if err := installProject(context.Background(), stateStore, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "go 1.25.0 is already installed") {
+		t.Fatalf("unexpected output: %s", out.String())
+	}
+	state, err := stateStore.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Defaults[model.Go] != "1.26.5" {
+		t.Fatalf("global Go default changed to %q", state.Defaults[model.Go])
+	}
+}

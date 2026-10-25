@@ -93,7 +93,7 @@ func updateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, o
 		_, _ = fmt.Fprintln(out, "updated rust toolchains")
 		return nil
 	}
-	version, err := recommendedVersion(ctx, tool)
+	version, err := recommendedVersion(ctx, stateStore, tool)
 	if err != nil {
 		return err
 	}
@@ -107,14 +107,14 @@ func updateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, o
 	}
 	previousVersions := state.Installed[tool]
 	_, _ = fmt.Fprintf(out, "updating %s to %s\n", tool, version)
-	if err := install(ctx, stateStore, []string{string(tool), version}, out); err != nil {
+	if err := install(ctx, stateStore, []string{string(tool), version}, out, true); err != nil {
 		return err
 	}
 	return offerOldVersionCleanup(stateStore, tool, version, previousVersions, out, os.Stdin)
 }
 
 func checkUpdateTool(ctx context.Context, stateStore *store.Store, tool model.Tool, out io.Writer) error {
-	latest, err := recommendedVersion(ctx, tool)
+	latest, err := recommendedVersion(ctx, stateStore, tool)
 	if err != nil {
 		return err
 	}

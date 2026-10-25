@@ -21,7 +21,7 @@ type ReadService struct {
 }
 
 func NewRead(home string) *ReadService {
-	return &ReadService{Store: store.New(home), Catalog: catalog.New()}
+	return &ReadService{Store: store.New(home), Catalog: catalog.NewWithCache(filepath.Join(home, "cache", "catalog"))}
 }
 
 type Installed struct {

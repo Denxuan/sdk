@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 	"github.com/Denxuan/sdk/internal/store"
 )
 
-func install(ctx context.Context, stateStore *store.Store, args []string, out io.Writer) error {
+func install(ctx context.Context, stateStore *store.Store, args []string, out io.Writer, promptDefault bool) error {
 	toolName, version, existingPath, err := parseInstallArgs(args)
 	if err != nil {
 		return err
@@ -28,13 +29,13 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		return err
 	}
 	if tool == model.Rust {
-		return installRust(ctx, stateStore, version, out)
+		return installRust(ctx, stateStore, version, out, promptDefault)
 	}
 	if version == "" {
 		if existingPath != "" {
 			return errors.New("usage: sdk install <tool> <version> --path <directory>")
 		}
-		version, err = recommendedVersion(ctx, tool)
+		version, err = recommendedVersion(ctx, stateStore, tool)
 		if err != nil {
 			return err
 		}
@@ -73,6 +74,12 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 	} else if !isDirectory(installPath) {
 		return fmt.Errorf("installation path must be a directory: %s", installPath)
 	}
+	if err := validateInstallation(tool, installPath); err != nil {
+		if managed {
+			_ = os.RemoveAll(installPath)
+		}
+		return err
+	}
 
 	state.Installed[tool] = append(state.Installed[tool], model.InstalledVersion{Version: version, Path: installPath, Managed: managed, InstalledAt: time.Now().UTC()})
 	if err := stateStore.Save(state); err != nil {
@@ -82,7 +89,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "installed %s %s at %s\n", tool, version, installPath)
-	if managed {
+	if managed && promptDefault {
 		setAsDefault, err := askToSetDefault(out, os.Stdin, tool, version)
 		if err != nil {
 			return err
@@ -94,7 +101,7 @@ func install(ctx context.Context, stateStore *store.Store, args []string, out io
 	return nil
 }
 
-func installRust(ctx context.Context, stateStore *store.Store, version string, out io.Writer) error {
+func installRust(ctx context.Context, stateStore *store.Store, version string, out io.Writer, promptDefault bool) error {
 	if version == "" {
 		version = "stable"
 	}
@@ -109,17 +116,22 @@ func installRust(ctx context.Context, stateStore *store.Store, version string, o
 	if err != nil {
 		return err
 	}
+	if err := validateInstallation(model.Rust, toolchainPath); err != nil {
+		return err
+	}
 	state.Installed[model.Rust] = append(state.Installed[model.Rust], model.InstalledVersion{Version: version, Path: toolchainPath, Managed: false, InstalledAt: time.Now().UTC()})
 	if err := stateStore.Save(state); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "installed rust %s at %s\n", version, toolchainPath)
-	setAsDefault, err := askToSetDefault(out, os.Stdin, model.Rust, version)
-	if err != nil {
-		return err
-	}
-	if setAsDefault {
-		return setDefault(ctx, stateStore, []string{string(model.Rust), version}, out, os.Stdin)
+	if promptDefault {
+		setAsDefault, err := askToSetDefault(out, os.Stdin, model.Rust, version)
+		if err != nil {
+			return err
+		}
+		if setAsDefault {
+			return setDefault(ctx, stateStore, []string{string(model.Rust), version}, out, os.Stdin)
+		}
 	}
 	return nil
 }
@@ -173,8 +185,8 @@ func parseInstallArgs(args []string) (tool, version, path string, err error) {
 	return positionals[0], version, path, nil
 }
 
-func recommendedVersion(ctx context.Context, tool model.Tool) (string, error) {
-	versions, err := catalog.New().Versions(ctx, tool)
+func recommendedVersion(ctx context.Context, stateStore *store.Store, tool model.Tool) (string, error) {
+	versions, err := catalog.NewWithCache(filepath.Join(stateStore.Home, "cache", "catalog")).Versions(ctx, tool)
 	if err != nil {
 		return "", err
 	}
@@ -202,3 +214,26 @@ func preferredVersion(versions []catalog.Version) string {
 }
 
 func isDirectory(path string) bool { info, err := os.Stat(path); return err == nil && info.IsDir() }
+
+func validateInstallation(tool model.Tool, root string) error {
+	name := executableName(tool)
+	if runtime.GOOS == "windows" {
+		switch tool {
+		case model.Maven, model.MVND:
+			name += ".cmd"
+		case model.Gradle:
+			name += ".bat"
+		default:
+			name += ".exe"
+		}
+	}
+	path := filepath.Join(root, "bin", name)
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("installation is missing %s: %w", path, err)
+	}
+	if info.IsDir() || runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
+		return fmt.Errorf("installation executable is not runnable: %s", path)
+	}
+	return nil
+}

@@ -31,7 +31,7 @@ go build -o sdk .
 eval "$(./sdk env)"
 ```
 
-也可只配置一次，让新的 zsh 终端自动加载当前版本，并在 `sdk default`、`sdk use`、`sdk install`、`sdk update` 成功后自动刷新当前终端环境：
+也可只配置一次，让新的 zsh 终端自动加载当前版本，并在切换目录及相关版本命令成功后自动刷新当前终端环境：
 
 ```bash
 ./sdk setup zsh
@@ -42,7 +42,7 @@ source ~/.zshrc
 
 `sdk default` 会更新每个工具目录中的 `current` 软链接，例如 `~/.sdk/tools/java/current`。Java 安装会被规整为版本目录就是 `JAVA_HOME`，因此 `~/.sdk/tools/java/25.0.4/bin/java` 可直接执行。`sdk env` 会输出 `JAVA_HOME`、`MAVEN_HOME`、`MVND_HOME`、`GRADLE_HOME`、`GOROOT`、`NODE_HOME`，并将 Rust 的 `~/.cargo/bin` 加入 `PATH`。
 
-项目可用 `.sdk-version` 固定工具版本：`sdk project init` 从当前默认版本创建文件，`sdk project set <tool> <version>` 设置当前目录的版本，`sdk project unset <tool>` 移除该工具的项目版本约束，`sdk project remove` 删除当前目录或最近父目录中的配置文件；zsh 集成会在这些命令成功后刷新环境。`sdk env --project` 可手动应用项目配置。
+项目可用 `.sdk-version` 固定工具版本：`sdk project init` 从当前默认版本创建文件，`sdk project set <tool> <version>` 设置当前目录的版本，`sdk project install` 安装最近配置文件中缺少的版本但不改全局默认，`sdk project unset <tool>` 移除单个工具版本，`sdk project remove` 删除当前目录或最近父目录中的配置文件。`sdk env --project` 可手动应用项目配置。
 
 Rust 由官方 `rustup` 管理。执行 `sdk install rust <toolchain>` 时，如果系统没有 `rustup`，SDK 会自动下载安装 `rustup-init`；也可以直接透传命令，例如 `sdk rustup target add aarch64-apple-darwin`。
 
@@ -81,8 +81,11 @@ MCP 工具的名称保持英文，便于客户端稳定调用；工具描述、�
 | `sdk uninstall <tool> <version>` | 卸载版本；如果是默认版本，同时清除默认设置和对应环境变量。 |
 | `sdk uninstall rustup` | 删除 rustup 以及 Rust toolchain。 |
 | `sdk env` | 输出当前版本对应的环境变量与 `PATH` 设置。 |
+| `sdk clean` | 删除 SDK 工具目录中的未完成下载，不影响已安装版本。 |
 
 下载因网络中断失败后，重新执行同一 `sdk install` 或 `sdk update` 命令会尝试从已下载位置续传；如果下载源不支持 HTTP Range，会自动从头下载。完成后仍会校验官方 checksum。
+
+远程版本列表会在 SDK home 中缓存一小时，网络不可用时会使用已有缓存。
 
 ## 自身更新
 

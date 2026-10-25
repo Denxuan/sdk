@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/Denxuan/sdk/internal/catalog"
@@ -22,7 +23,7 @@ func remote(ctx context.Context, stateStore *store.Store, args []string, out io.
 	if err != nil {
 		return err
 	}
-	versions, err := catalog.New().Versions(ctx, tool)
+	versions, err := catalog.NewWithCache(filepath.Join(stateStore.Home, "cache", "catalog")).Versions(ctx, tool)
 	if err != nil {
 		return err
 	}

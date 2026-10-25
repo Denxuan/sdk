@@ -38,12 +38,14 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		return printEnvironment(stateStore, args[1:], out)
 	case "doctor":
 		return doctor(stateStore, args[1:], out)
+	case "clean":
+		return cleanDownloads(stateStore, args[1:], out)
 	case "path":
 		return printToolPath(stateStore, args[1:], out)
 	case "which":
 		return printToolExecutable(stateStore, args[1:], out)
 	case "project":
-		return project(stateStore, args[1:], out)
+		return project(ctx, stateStore, args[1:], out)
 	case "setup":
 		return setupShell(stateStore, args[1:], out)
 	case "list":
@@ -58,7 +60,7 @@ func Run(ctx context.Context, args []string, out io.Writer) error {
 		}
 		return uninstall(stateStore, args[1:], out)
 	case "install":
-		return install(ctx, stateStore, args[1:], out)
+		return install(ctx, stateStore, args[1:], out, true)
 	case "update":
 		return update(ctx, stateStore, args[1:], out)
 	case "remote", "available":

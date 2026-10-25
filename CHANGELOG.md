@@ -7,6 +7,10 @@
 ## 未发布
 
 - 下载中断后保留未完成归档；下次安装或更新通过 HTTP Range 从已下载位置续传，完成后仍校验官方 checksum。
+- 新增 `sdk project install`，按最近的 `.sdk-version` 安装缺少的工具版本且不修改全局默认。
+- 新增 `sdk clean`，清理未完成的工具下载文件。
+- 安装完成后验证工具主执行文件存在且可运行，避免登记无效安装。
+- 远程版本列表缓存一小时；网络不可用时回退到已有缓存。
 - 新增 `sdk project unset <tool>`，移除当前目录 `.sdk-version` 中指定工具的版本。
 - 新增 `sdk project remove`，删除当前目录或最近父目录中的 `.sdk-version` 文件。
 - 修复 Adoptium Java 资产接口改为 `binaries[]` 后无法读取下载链接和 checksum 的问题。

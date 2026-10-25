@@ -21,6 +21,12 @@ func TestInstallUseListAndRemove(t *testing.T) {
 	if err := os.Mkdir(installPath, 0755); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Mkdir(filepath.Join(installPath, "bin"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(installPath, "bin", "go"), []byte("go"), 0755); err != nil {
+		t.Fatal(err)
+	}
 	run := func(args ...string) (string, error) {
 		var out bytes.Buffer
 		err := Run(context.Background(), args, &out)

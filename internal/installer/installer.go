@@ -36,6 +36,7 @@ type Checksum struct {
 }
 
 const defaultDownloadAttempts = 3
+const partialDownloadPrefix = ".sdk-download-"
 
 type Installer struct {
 	HTTP        *http.Client
@@ -272,7 +273,28 @@ func (i *Installer) downloadOnce(ctx context.Context, url, target string) error 
 func partialDownloadPath(destination, url string) string {
 	// shortcut: the URL identifies the partial file; use catalog artifact IDs if download URLs become ephemeral.
 	key := sha256.Sum256([]byte(url))
-	return filepath.Join(filepath.Dir(destination), ".sdk-download-"+hex.EncodeToString(key[:]))
+	return filepath.Join(filepath.Dir(destination), partialDownloadPrefix+hex.EncodeToString(key[:]))
+}
+
+func CleanPartialDownloads(root string) (int, error) {
+	removed := 0
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || !entry.Type().IsRegular() || !strings.HasPrefix(entry.Name(), partialDownloadPrefix) {
+			return nil
+		}
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+		removed++
+		return nil
+	})
+	if errors.Is(err, os.ErrNotExist) {
+		return removed, nil
+	}
+	return removed, err
 }
 
 func parseContentRange(value string) (start, total int64, ok bool) {

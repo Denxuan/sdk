@@ -122,6 +122,110 @@ func TestDownloadRetriesTemporaryServerFailure(t *testing.T) {
 	}
 }
 
+func TestDownloadResumesAfterInterruptedRequest(t *testing.T) {
+	const content = "0123456789"
+	requests := 0
+	client := &http.Client{Transport: roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		requests++
+		if requests == 1 {
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Length": {"10"}}, ContentLength: 10, Body: io.NopCloser(&interruptedReader{content: content[:4]}), Request: request}, nil
+		}
+		if got := request.Header.Get("Range"); got != "bytes=4-" {
+			t.Errorf("Range = %q, want bytes=4-", got)
+		}
+		return &http.Response{
+			StatusCode:    http.StatusPartialContent,
+			Header:        http.Header{"Content-Range": {"bytes 4-9/10"}, "Content-Length": {"6"}},
+			ContentLength: 6,
+			Body:          io.NopCloser(bytes.NewBufferString(content[4:])),
+			Request:       request,
+		}, nil
+	})}
+
+	installer := New()
+	installer.HTTP = client
+	installer.MaxAttempts = 1
+	target := filepath.Join(t.TempDir(), "partial")
+	if err := installer.download(context.Background(), "https://downloads.example.test/package", target); err == nil {
+		t.Fatal("interrupted download unexpectedly succeeded")
+	}
+	partial, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(partial) != content[:4] {
+		t.Fatalf("partial download = %q, want %q", partial, content[:4])
+	}
+
+	var reports []Progress
+	installer.Progress = func(progress Progress) { reports = append(reports, progress) }
+	if err := installer.download(context.Background(), "https://downloads.example.test/package", target); err != nil {
+		t.Fatal(err)
+	}
+	complete, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(complete) != content {
+		t.Fatalf("resumed download = %q, want %q", complete, content)
+	}
+	if len(reports) == 0 || reports[0] != (Progress{Downloaded: 4, Total: 10}) {
+		t.Fatalf("initial resumed progress = %+v, want 4/10", reports)
+	}
+}
+
+func TestCleanPartialDownloadsRemovesOnlyPartialFiles(t *testing.T) {
+	root := t.TempDir()
+	partialPaths := []string{
+		filepath.Join(root, partialDownloadPrefix+"one"),
+		filepath.Join(root, "nodejs", partialDownloadPrefix+"two"),
+	}
+	for _, path := range partialPaths {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("partial"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	keptPath := filepath.Join(root, "nodejs", "24.22.1", "bin", "node")
+	if err := os.MkdirAll(filepath.Dir(keptPath), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keptPath, []byte("installed"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := CleanPartialDownloads(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != len(partialPaths) {
+		t.Fatalf("removed = %d, want %d", removed, len(partialPaths))
+	}
+	for _, path := range partialPaths {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("partial file %s still exists", path)
+		}
+	}
+	if _, err := os.Stat(keptPath); err != nil {
+		t.Fatalf("installed file was removed: %v", err)
+	}
+}
+
+type interruptedReader struct {
+	content string
+	done    bool
+}
+
+func (r *interruptedReader) Read(data []byte) (int, error) {
+	if r.done {
+		return 0, io.ErrUnexpectedEOF
+	}
+	r.done = true
+	return copy(data, r.content), nil
+}
+
 func TestVerifyChecksumRejectsModifiedArchive(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "package")
 	if err := os.WriteFile(path, []byte("original package"), 0644); err != nil {

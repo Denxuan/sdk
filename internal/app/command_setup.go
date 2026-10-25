@@ -106,7 +106,7 @@ sdk() {
       ;;
     project)
       case "$2" in
-        set|unset|remove)
+        set|unset|remove|install)
           if [ "$sdk_exit" -eq 0 ]; then
             _sdk_refresh_environment
           fi

@@ -22,10 +22,12 @@ Usage:
   sdk uninstall rustup                  Remove rustup and all Rust toolchains
   sdk env [--project]                  Print environment variables; project versions override defaults
   sdk doctor                           Diagnose installations, current links, and environment
+  sdk clean                            Remove incomplete SDK tool downloads
   sdk path <tool>                      Print the current tool directory
   sdk which <tool>                     Print the current tool executable path
   sdk project init                     Create .sdk-version from current defaults
   sdk project set <tool> <version>     Set a version in .sdk-version in the current directory
+  sdk project install                  Install tool versions pinned in the nearest .sdk-version
   sdk project unset <tool>             Remove a tool version from .sdk-version in the current directory
   sdk project remove                   Remove the nearest .sdk-version file
   sdk project list                     Show the nearest .sdk-version file

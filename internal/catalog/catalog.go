@@ -11,7 +11,8 @@ import (
 )
 
 type Client struct {
-	HTTP *http.Client
+	HTTP     *http.Client
+	CacheDir string
 }
 
 type Artifact struct {
@@ -28,7 +29,32 @@ func New() *Client {
 	return &Client{HTTP: &http.Client{Timeout: 60 * time.Second}}
 }
 
+func NewWithCache(directory string) *Client {
+	client := New()
+	client.CacheDir = directory
+	return client
+}
+
 func (c *Client) Versions(ctx context.Context, tool model.Tool) ([]Version, error) {
+	if c.CacheDir == "" {
+		return c.fetchVersions(ctx, tool)
+	}
+	cached, cachedAt, cacheErr := c.readVersionsCache(tool)
+	if cacheErr == nil && time.Since(cachedAt) < time.Hour && !cachedAt.After(time.Now()) {
+		return cached, nil
+	}
+	versions, err := c.fetchVersions(ctx, tool)
+	if err != nil {
+		if cacheErr == nil {
+			return cached, nil
+		}
+		return nil, err
+	}
+	_ = c.writeVersionsCache(tool, versions)
+	return versions, nil
+}
+
+func (c *Client) fetchVersions(ctx context.Context, tool model.Tool) ([]Version, error) {
 	switch tool {
 	case model.Java:
 		return c.javaVersions(ctx)

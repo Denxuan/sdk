@@ -1,10 +1,63 @@
 package catalog
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/Denxuan/sdk/internal/model"
 )
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) { return f(request) }
+
+func TestVersionsUsesCacheWhenNetworkIsUnavailable(t *testing.T) {
+	client := NewWithCache(t.TempDir())
+	client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`[{"version":"go1.26.4"}]`)), Header: make(http.Header)}, nil
+	})}
+	want := []Version{{Number: "1.26.4"}}
+	got, err := client.Versions(context.Background(), model.Go)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("first Versions() = %#v, %v", got, err)
+	}
+	client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("network unavailable")
+	})}
+	got, err = client.Versions(context.Background(), model.Go)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("cached Versions() = %#v, %v", got, err)
+	}
+}
+
+func TestVersionsFallsBackToStaleCacheWhenNetworkIsUnavailable(t *testing.T) {
+	directory := t.TempDir()
+	client := NewWithCache(directory)
+	want := []Version{{Number: "1.26.4"}}
+	data, err := json.Marshal(versionCache{FetchedAt: time.Now().Add(-2 * time.Hour), Versions: want})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "go.json"), data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	client.HTTP = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("network unavailable")
+	})}
+	got, err := client.Versions(context.Background(), model.Go)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("stale cached Versions() = %#v, %v", got, err)
+	}
+}
 
 func TestUniqueSortsReleaseVersionsNumerically(t *testing.T) {
 	got := unique([]string{"3.9.2", "3.9.16", "26", "8", "21", "3.9.16"})
